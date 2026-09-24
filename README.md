@@ -1,8 +1,8 @@
-# CTI Workbench v0.5.6
+# CTI Workbench v0.5.7 rev 2
 
 **Evidence-first IOC enrichment for Windows.**
 
-CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.6 keeps the stable dark-only interface and includes a checkpoint-driven analysis progress dialog, icon-based Intelligence Graph, Related Indicators, and Raw Data views.
+CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.7 refines the analyst UX while preserving the evidence-first, dark-only workflow.
 
 ## Current capabilities
 
@@ -82,6 +82,16 @@ cti-workbench/
 ```
 
 
+
+## v0.5.7 analyst UX
+
+- Overview hierarchy: analyzed IOC → global finding → intelligence sources → context.
+- Real checkpoint list during analysis; no fabricated time-based percentage.
+- Per-source response timing plus relationship/graph timing.
+- Keyboard shortcuts: Ctrl+L focus IOC, Ctrl+C copy current IOC, Ctrl+E export related indicators.
+- Existing static Intelligence Graph and Related Indicators workflow retained.
+- No proprietary malware score and no decorative analysis animation.
+
 ## v0.5.6 hardening
 
 - Strict IPv4/IPv6 and IP:port validation using Python `ipaddress`
@@ -98,6 +108,14 @@ cti-workbench/
 
 ## Version
 
-Current baseline: **v0.5.6**.
+Current test baseline: **v0.5.7 rev 2**.
 
 This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
+
+
+### v0.5.7 rev 2 visual refinement
+
+- Starts maximized using the normal Windows maximized state (not exclusive fullscreen).
+- Reduces peripheral Intelligence Graph glyphs to roughly half their previous footprint.
+- Keeps the central analyzed IOC visually dominant at roughly 75% of its previous glyph size.
+- Moves graph labels closer to the smaller glyphs while preserving the existing relationships and evidence model.
