@@ -1,0 +1,28 @@
+# Python / virtual environments
+.venv/
+__pycache__/
+*.py[cod]
+
+# Build output
+build/
+dist/
+*.spec
+
+# Local CTI data / exports
+reports/
+data/
+*.csv
+
+# Local settings and secrets
+config/settings.json
+config/virustotal.json
+config/abusech.json
+.env
+*.key
+*.pem
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

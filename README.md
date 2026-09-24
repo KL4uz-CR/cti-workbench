@@ -1,0 +1,89 @@
+# CTI Workbench v0.5.5
+
+**Evidence-first IOC enrichment for Windows.**
+
+CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.5 is dark-only and includes a checkpoint-driven analysis progress dialog, icon-based Intelligence Graph, Related Indicators, and Raw Data views.
+
+## Current capabilities
+
+- IOC analysis: IP, IP:port, domain, URL, MD5, SHA-1 and SHA-256
+- DNS / WHOIS enrichment through `iocinfo`
+- VirusTotal API v3 existing-report enrichment
+- ThreatFox direct API enrichment
+- URLhaus direct API enrichment
+- Automatic Related Indicators discovery where the VirusTotal API exposes relationships
+- Static icon-based Intelligence Graph with relationship labels and double-click pivoting
+- Evidence-first global analysis state; no locally invented malware score
+- Real pipeline progress checkpoints rather than time-based fake progress
+- Dark-only analyst UI
+
+## Quick start
+
+Requirements: Windows 10/11 and Python 3.11+ recommended.
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup.ps1
+```
+
+Then add your own API credentials to the local files created under `config` and run:
+
+```powershell
+.\run.ps1
+```
+
+Full instructions: [`docs/SETUP.md`](docs/SETUP.md)
+
+## API credentials
+
+The repository contains **examples only**:
+
+- `config/virustotal.json.example`
+- `config/abusech.json.example`
+
+`setup.ps1` copies these to local working files. Real credential files are excluded by `.gitignore` and must never be committed.
+
+VirusTotal integration performs lookups of existing reports; CTI Workbench does not automatically upload files for scanning.
+
+## Analysis workflow
+
+The progress dialog reflects actual pipeline checkpoints:
+
+1. Validate and normalize IOC
+2. DNS / WHOIS enrichment
+3. VirusTotal
+4. ThreatFox
+5. URLhaus
+6. Related Indicators
+7. Intelligence Graph
+
+The indicator graph and Related Indicators are populated automatically when relationship data is available.
+
+## Repository layout
+
+```text
+cti-workbench/
+├── config/
+│   ├── abusech.json.example
+│   └── virustotal.json.example
+├── docs/
+│   ├── SECURITY.md
+│   └── SETUP.md
+├── src/
+│   └── main.py
+├── .gitignore
+├── README.md
+├── requirements.txt
+├── run.ps1
+└── setup.ps1
+```
+
+## Important interpretation note
+
+`0 detections` is not equivalent to `safe`. CTI Workbench keeps intelligence sources separate so that, for example, a VirusTotal result with no vendor detections does not suppress evidence returned by ThreatFox or URLhaus. Related indicators are relationships, not automatic malicious verdicts.
+
+## Version
+
+Current baseline: **v0.5.5**.
+
+This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
