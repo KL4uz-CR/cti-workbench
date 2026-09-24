@@ -1,8 +1,8 @@
-# CTI Workbench v0.5.5
+# CTI Workbench v0.5.6
 
 **Evidence-first IOC enrichment for Windows.**
 
-CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.5 is dark-only and includes a checkpoint-driven analysis progress dialog, icon-based Intelligence Graph, Related Indicators, and Raw Data views.
+CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.6 keeps the stable dark-only interface and includes a checkpoint-driven analysis progress dialog, icon-based Intelligence Graph, Related Indicators, and Raw Data views.
 
 ## Current capabilities
 
@@ -70,7 +70,10 @@ cti-workbench/
 │   ├── SECURITY.md
 │   └── SETUP.md
 ├── src/
+│   ├── core.py
 │   └── main.py
+├── tests/
+│   └── test_core.py
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
@@ -78,12 +81,23 @@ cti-workbench/
 └── setup.ps1
 ```
 
+
+## v0.5.6 hardening
+
+- Strict IPv4/IPv6 and IP:port validation using Python `ipaddress`
+- Core IOC/TLS/logging helpers separated from the Qt UI
+- Defensive validation of VirusTotal relationship payloads
+- Rotating local diagnostics in `logs/cti-workbench.log` (excluded from Git)
+- Explicit `iocinfo` executable and timeout diagnostics
+- TLS verification remains enabled; certifi fallback is logged
+- Regression tests for IOC normalization
+
 ## Important interpretation note
 
 `0 detections` is not equivalent to `safe`. CTI Workbench keeps intelligence sources separate so that, for example, a VirusTotal result with no vendor detections does not suppress evidence returned by ThreatFox or URLhaus. Related indicators are relationships, not automatic malicious verdicts.
 
 ## Version
 
-Current baseline: **v0.5.5**.
+Current baseline: **v0.5.6**.
 
 This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.

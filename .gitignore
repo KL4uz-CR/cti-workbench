@@ -26,3 +26,6 @@ config/abusech.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Runtime diagnostics
+logs/

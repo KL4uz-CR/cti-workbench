@@ -1,43 +1,12 @@
-import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse,ssl
+import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse
 from pathlib import Path
 from PySide6.QtCore import QThread,Signal,Qt,QPointF
 from PySide6.QtWidgets import *
 from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath
-APP="CTI Workbench"; VERSION="0.5.5"
+from core import normalize_ioc, safe_dict, tls_context, get_logger
+APP="CTI Workbench"; VERSION="0.5.6"
+logger=get_logger()
 DARK="""QWidget{background:#0F172A;color:#F8FAFC;font-family:'Segoe UI';font-size:14px}QFrame#card,QFrame#mini{background:#1E293B;border:1px solid #334155;border-radius:10px}QLineEdit,QComboBox{background:#1E293B;color:#F8FAFC;border:1px solid #475569;border-radius:8px;padding:10px}QLineEdit:focus{border:2px solid #38BDF8}QPushButton{background:#38BDF8;color:#0F172A;border:0;border-radius:8px;padding:10px 18px;font-weight:700}QPushButton:hover{background:#7DD3FC}QPushButton:disabled{background:#334155;color:#94A3B8}QTextEdit{background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:8px;padding:8px;font-family:'Cascadia Mono','Consolas'}QLabel#title{color:#38BDF8;font-size:24px;font-weight:700}QLabel#section{color:#7DD3FC;font-weight:700}QLabel#muted{color:#CBD5E1}QTabWidget::pane{border:1px solid #334155}QTabBar::tab{background:#0F172A;color:#F8FAFC;padding:9px 16px;border:1px solid #334155}QTabBar::tab:selected{background:#1E293B;color:#38BDF8;font-weight:700}QToolTip{background:#1E293B;color:#F8FAFC;border:1px solid #38BDF8}"""
-def normalize_ioc(v):
- v=v.strip()
- original=v
- # URLs keep their path/query semantics, but normalize scheme/host casing and
- # remove a bare trailing slash only when it is the root URL.
- if re.match(r"^https?://",v,re.I):
-  from urllib.parse import urlsplit,urlunsplit
-  try:
-   u=urlsplit(v)
-   host=(u.hostname or "").lower().rstrip(".")
-   if not host: return original,original,"Unknown"
-   port=f":{u.port}" if u.port else ""
-   netloc=host+port
-   path=u.path
-   normalized=urlunsplit((u.scheme.lower(),netloc,path,u.query,u.fragment))
-   return original,normalized,"URL"
-  except Exception:
-   return original,original,"Unknown"
- # A common analyst paste is example.com/ without a scheme. Treat it as a
- # domain rather than sending the slash upstream.
- candidate=v.rstrip("/.").lower()
- if re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}",candidate,re.I):
-  return original,candidate,"Domain"
- # Analyst-friendly IP:PORT input. Preserve the original while enriching the host IP.
- m=re.fullmatch(r"((?:\d{1,3}\.){3}\d{1,3}):(\d{1,5})",v)
- if m:
-  ip,port=m.group(1),int(m.group(2))
-  if port <= 65535 and all(0 <= int(x) <= 255 for x in ip.split(".")):
-   return original,ip,"IP Address"
- if re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}",v): return original,v,"IP Address"
- if re.fullmatch(r"[A-Fa-f0-9]{32}|[A-Fa-f0-9]{40}|[A-Fa-f0-9]{64}",v): return original,v.lower(),"Hash"
- return original,original,"Unknown"
-
 def typ(v):
  return normalize_ioc(v)[2]
 
@@ -133,11 +102,12 @@ def vt_lookup(ioc_type,value):
   ident=base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii").rstrip("=")
   endpoint="urls/"+ident
  else: return {"status":"Unsupported IOC type"}
- req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.0"})
+ req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.6"})
  try:
   with urllib.request.urlopen(req,timeout=20) as r: payload=json.loads(r.read().decode("utf-8","replace"))
-  attrs=payload.get("data",{}).get("attributes",{})
-  stats=attrs.get("last_analysis_stats",{}) or {}
+  data=safe_dict(payload.get("data",{}))
+  attrs=safe_dict(data.get("attributes",{}))
+  stats=safe_dict(attrs.get("last_analysis_stats",{}))
   return {"status":"Available","malicious":stats.get("malicious",0),"suspicious":stats.get("suspicious",0),"harmless":stats.get("harmless",0),"undetected":stats.get("undetected",0),"reputation":attrs.get("reputation","—"),"last_analysis_date":attrs.get("last_analysis_date"),"categories":attrs.get("categories",{})}
  except urllib.error.HTTPError as e:
   if e.code==404:return {"status":"No existing report"}
@@ -145,6 +115,7 @@ def vt_lookup(ioc_type,value):
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
  except Exception as e:
+  logger.warning("VirusTotal lookup failed for %s: %s",ioc_type,e)
   return {"status":"Source unavailable","detail":str(e)}
 
 def vt_metrics(v):
@@ -182,20 +153,23 @@ def vt_relationship_request(path,relationship,limit=10):
  key=vt_api_key()
  if not key: return {"status":"Not configured","items":[]}
  url=f"https://www.virustotal.com/api/v3/{path}/{relationship}?limit={limit}"
- req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.0"})
+ req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.6"})
  try:
   with urllib.request.urlopen(req,timeout=20,context=tls_context()) as r:
    payload=json.loads(r.read().decode("utf-8","replace"))
   data=payload.get("data")
   if data is None: return {"status":"No data","items":[]}
   if not isinstance(data,list): data=[data]
-  return {"status":"Available","items":data,"count":payload.get("meta",{}).get("count",len(data))}
+  meta=safe_dict(payload.get("meta",{}))
+  return {"status":"Available","items":data,"count":meta.get("count",len(data))}
  except urllib.error.HTTPError as e:
   if e.code==404:return {"status":"No data","items":[]}
   if e.code in (401,403):return {"status":"Permission unavailable","items":[]}
   if e.code==429:return {"status":"Rate limit reached","items":[]}
   return {"status":f"HTTP {e.code}","items":[]}
- except Exception as e:return {"status":"Source unavailable","items":[],"detail":str(e)}
+ except Exception as e:
+  logger.warning("VirusTotal relationship lookup failed (%s): %s",relationship,e)
+  return {"status":"Source unavailable","items":[],"detail":str(e)}
 
 def related_indicator_rows(ioc_type,value):
  """Return evidence-backed VT relationships only; no inferred relationships."""
@@ -213,7 +187,9 @@ def related_indicator_rows(ioc_type,value):
   if result["status"] not in ("Available","No data"):
    notes.append(f"{rel}: {result['status']}")
   for obj in result.get("items",[]):
-   typ0=obj.get("type",""); attrs=obj.get("attributes",{}) or {}; val=None; outtype=None
+   if not isinstance(obj,dict):
+    logger.warning("VT relationship %s returned non-object item; skipping",rel); continue
+   typ0=obj.get("type",""); attrs=safe_dict(obj.get("attributes",{})); val=None; outtype=None
    if typ0=="resolution":
     # For a domain pivot, resolution yields IPs; for an IP pivot, it yields domains.
     if ioc_type=="Domain": val=attrs.get("ip_address"); outtype="IP Address"
@@ -243,16 +219,9 @@ def abusech_api_key():
  except Exception: pass
  return ""
 
-def tls_context():
- try:
-  import certifi
-  return ssl.create_default_context(cafile=certifi.where())
- except Exception:
-  return ssl.create_default_context()
-
 def post_form_json(url,data,key,timeout=20):
  body=urllib.parse.urlencode(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.0"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.6"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   return json.loads(raw)
@@ -261,7 +230,7 @@ def post_json(url,data,key,timeout=20):
  # ThreatFox documents a JSON request body. Keep this separate from URLhaus,
  # whose lookup endpoints accept form-encoded fields.
  body=json.dumps(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":"CTI-Workbench/0.5.0"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":"CTI-Workbench/0.5.6"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   ctype=(r.headers.get("Content-Type") or "").lower()
@@ -290,6 +259,7 @@ def threatfox_lookup(ioc_type,value):
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
  except Exception as e:
+  logger.warning("ThreatFox lookup failed for %s: %s",ioc_type,e)
   return {"status":"Source error","detail":str(e)}
 
 def urlhaus_lookup(ioc_type,value):
@@ -313,7 +283,9 @@ def urlhaus_lookup(ioc_type,value):
   if e.code in (401,403):return {"status":"Authentication error"}
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
- except Exception as e:return {"status":"Source unavailable","detail":str(e)}
+ except Exception as e:
+  logger.warning("URLhaus lookup failed for %s: %s",ioc_type,e)
+  return {"status":"Source unavailable","detail":str(e)}
 
 def tf_text(v):
  if v.get("status")!="IOC FOUND":return v.get("status","No data")
@@ -339,12 +311,22 @@ class W(QThread):
   raw=""; code=0
   if not exe:
    raw=f"iocinfo not found.\nChecked: {p}"; code=127
+   logger.error("iocinfo executable not found; checked %s",p)
+  elif not Path(exe).is_file():
+   raw=f"iocinfo path is not a file: {exe}"; code=127
+   logger.error("iocinfo path is not a file: %s",exe)
   else:
    try:
+    logger.info("Analysis started: type=%s indicator=%s",self.t,self.x)
     q=subprocess.run([exe,self.x],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90,env=e,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
     raw=((q.stdout or "")+("\n"+q.stderr if q.stderr else "")).strip(); code=q.returncode
+    logger.info("iocinfo completed: returncode=%s",code)
+   except subprocess.TimeoutExpired:
+    raw="iocinfo timed out after 90 seconds"; code=124
+    logger.warning("iocinfo timed out after 90 seconds")
    except Exception as z:
     raw=str(z); code=1
+    logger.exception("iocinfo execution failed")
   self.progress.emit(2,"Querying VirusTotal")
   vt=vt_lookup(self.t,self.x)
   self.progress.emit(3,"Querying ThreatFox")

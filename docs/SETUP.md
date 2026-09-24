@@ -62,3 +62,14 @@ If `iocinfo` is not found or the environment becomes damaged, delete `.venv` and
 If API cards show `Not configured`, verify the corresponding JSON file and key.
 
 Do not disable TLS certificate validation. The project uses `certifi` to maintain certificate verification.
+
+
+## Self-test
+
+After setup, core IOC normalization tests can be run with:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Runtime diagnostics are written to `logs\cti-workbench.log`.
