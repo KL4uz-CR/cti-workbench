@@ -1,83 +1,88 @@
-# CTI Workbench v0.5.8 Preview 4 (test build)
-
-Dense graphs now use two-column indicator lanes, retaining a compact radial layout for small sets. Labels are separated from nodes; graph relationship summaries remain outside the visualization. The gauge caption has additional clearance. This package includes the Preview 3 runtime NameError correction. Live API/UI regression testing is required on Windows before release. Do not commit API credentials.
-
-# CTI Workbench v0.5.8 Preview 3 (reconstruida)
-
-Cambios: versión visible corregida; grafo con nodos únicos por tipo e indicador, incluso cuando VirusTotal devuelve varias relaciones; distribución radial alternada; resumen de relaciones fuera del grafo. El odómetro continúa mostrando exclusivamente detecciones de VirusTotal, no una puntuación global de riesgo.
-
-La validación visual y de las API debe realizarse en Windows antes de integrar en Git.
-
----
-
-# CTI Workbench v0.5.8 — Visual preview 3
-
-This is an early visual prototype based on the stable v0.5.7 rev 2 code. It preserves the existing source integrations, evidence logic, relationship table and static interactive graph. The interface now uses a continuous scrollable investigation view, quick navigation, recent searches (session-only), VirusTotal detection circle and vendor statistics.
-
-This is a test build, not a validated release. The 9 core tests pass; live API/UI regression testing must be done on the user’s Windows machine. Do not commit local config JSON files or API keys.
-
-Recent searches exist only during the running session. The circle reports VirusTotal vendor detections, **not** an overall safety score. No matches do not imply safety.
-
-# CTI Workbench v0.5.7 rev 2
+# CTI Workbench v0.5.8
 
 **Evidence-first IOC enrichment for Windows.**
 
-CTI Workbench is a Windows desktop tool for quickly enriching indicators and presenting source evidence in a compact analyst-oriented interface. v0.5.7 refines the analyst UX while preserving the evidence-first, dark-only workflow.
+CTI Workbench is a Windows desktop application for enriching indicators of compromise (IOCs) and presenting source-specific evidence in an analyst-oriented interface. Version 0.5.8 introduces a consolidated investigation overview and improves Intelligence Graph readability while retaining the existing evidence-first workflow.
 
 ## Current capabilities
 
-- IOC analysis: IP, IP:port, domain, URL, MD5, SHA-1 and SHA-256
+- IOC analysis: IPv4, IPv6, IP:port, domain, URL, MD5, SHA-1 and SHA-256
 - DNS / WHOIS enrichment through `iocinfo`
-- VirusTotal API v3 existing-report enrichment
-- ThreatFox direct API enrichment
-- URLhaus direct API enrichment
-- Automatic Related Indicators discovery where the VirusTotal API exposes relationships
-- Static icon-based Intelligence Graph with relationship labels and double-click pivoting
+- VirusTotal API v3 existing-report enrichment and source-native vendor detection statistics
+- ThreatFox and URLhaus API enrichment
+- Automatic Related Indicators discovery when VirusTotal exposes relationship data
+- Static, icon-based Intelligence Graph with relationship context and double-click pivoting
 - Evidence-first global analysis state; no locally invented malware score
-- Real pipeline progress checkpoints rather than time-based fake progress
-- Dark-only analyst UI
+- Real pipeline checkpoints rather than simulated progress percentages
+- Dark-only Windows analyst interface
+
+## What's new in v0.5.8
+
+- Consolidated, scrollable investigation overview with quick navigation and session-only recent searches
+- Clearer presentation of the analyzed IOC, global assessment, individual intelligence sources and supporting context
+- VirusTotal detection gauge and vendor statistics, explicitly separate from the global assessment
+- Improved graph layout: compact radial arrangement for smaller indicator sets and two-column indicator lanes for dense graphs
+- Unique graph nodes per indicator and type, with labels separated from nodes and relationship summaries outside the visualization
+- Improved gauge-caption spacing and corrected the runtime issue identified during preview testing
+
+The v0.5.8 interface and live API behavior were visually exercised on Windows before publication. The nine core normalization regression tests passed. These checks do not guarantee that every external API response or environment is covered.
 
 ## Quick start
 
-Requirements: Windows 10/11 and Python 3.11+ recommended.
+**Requirements:** Windows 10/11 and Python 3.11+ recommended.
+
+From PowerShell in the repository directory:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\setup.ps1
 ```
 
-Then add your own API credentials to the local files created under `config` and run:
+Add your own API credentials to the local configuration files created under `config`, then launch:
 
 ```powershell
 .\run.ps1
 ```
 
-Full instructions: [`docs/SETUP.md`](docs/SETUP.md)
+See [`docs/SETUP.md`](docs/SETUP.md) for full setup instructions.
 
-## API credentials
+## API credentials and security
 
-The repository contains **examples only**:
+The repository includes configuration templates only:
 
 - `config/virustotal.json.example`
 - `config/abusech.json.example`
 
-`setup.ps1` copies these to local working files. Real credential files are excluded by `.gitignore` and must never be committed.
+`setup.ps1` creates local working copies. Real credential files are excluded by `.gitignore` and **must never be committed**. VirusTotal integration looks up existing reports; CTI Workbench does not automatically upload files for scanning. TLS certificate verification remains enabled.
 
-VirusTotal integration performs lookups of existing reports; CTI Workbench does not automatically upload files for scanning.
+See [`docs/SECURITY.md`](docs/SECURITY.md) for additional security guidance.
 
 ## Analysis workflow
 
-The progress dialog reflects actual pipeline checkpoints:
+The application reports real pipeline checkpoints:
 
-1. Validate and normalize IOC
+1. Validate and normalize the IOC
 2. DNS / WHOIS enrichment
-3. VirusTotal
-4. ThreatFox
-5. URLhaus
-6. Related Indicators
-7. Intelligence Graph
+3. VirusTotal enrichment
+4. ThreatFox enrichment
+5. URLhaus enrichment
+6. Related Indicators discovery
+7. Intelligence Graph preparation
 
-The indicator graph and Related Indicators are populated automatically when relationship data is available.
+Related Indicators and the Intelligence Graph are populated automatically when relationship data is available.
+
+### Interpreting results
+
+**Zero detections does not mean safe.** VirusTotal vendor detections are displayed as VirusTotal-specific evidence, not as an overall safety score. A VirusTotal result with no detections does not override relevant evidence from ThreatFox or URLhaus. Related indicators show relationships, not automatic malicious verdicts.
+
+## Analyst workflow
+
+- Investigation overview with source evidence and supporting context
+- Session-only recent searches and quick navigation
+- Static Intelligence Graph with double-click pivoting
+- Keyboard shortcuts: `Ctrl+L` focuses IOC input; `Ctrl+C` copies the current IOC; `Ctrl+E` exports related indicators
+- Source response timing and relationship/graph timing
+- Real checkpoints without fabricated progress percentages or decorative analysis animation
 
 ## Repository layout
 
@@ -101,44 +106,13 @@ cti-workbench/
 └── setup.ps1
 ```
 
+## Version history
 
+- **v0.5.8:** Consolidated investigation overview; VirusTotal gauge and vendor statistics; refined Intelligence Graph layouts and labeling; runtime correction identified during preview testing.
+- **v0.5.7:** Analyst UX refinements, Windows maximized startup, improved graph glyph sizing and relationship presentation.
+- **v0.5.6:** Strict IP/IP:port validation, separation of core IOC/TLS/logging helpers from the UI, defensive VirusTotal relationship handling, rotating diagnostics, `iocinfo` timeout reporting and normalization regression tests.
+- **v0.5.5:** Initial private GitHub release.
 
-## v0.5.7 analyst UX
+## Repository status
 
-- Overview hierarchy: analyzed IOC → global finding → intelligence sources → context.
-- Real checkpoint list during analysis; no fabricated time-based percentage.
-- Per-source response timing plus relationship/graph timing.
-- Keyboard shortcuts: Ctrl+L focus IOC, Ctrl+C copy current IOC, Ctrl+E export related indicators.
-- Existing static Intelligence Graph and Related Indicators workflow retained.
-- No proprietary malware score and no decorative analysis animation.
-
-## v0.5.6 hardening
-
-- Strict IPv4/IPv6 and IP:port validation using Python `ipaddress`
-- Core IOC/TLS/logging helpers separated from the Qt UI
-- Defensive validation of VirusTotal relationship payloads
-- Rotating local diagnostics in `logs/cti-workbench.log` (excluded from Git)
-- Explicit `iocinfo` executable and timeout diagnostics
-- TLS verification remains enabled; certifi fallback is logged
-- Regression tests for IOC normalization
-
-## Important interpretation note
-
-`0 detections` is not equivalent to `safe`. CTI Workbench keeps intelligence sources separate so that, for example, a VirusTotal result with no vendor detections does not suppress evidence returned by ThreatFox or URLhaus. Related indicators are relationships, not automatic malicious verdicts.
-
-## Version
-
-Current test baseline: **v0.5.7 rev 2**.
-
-This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
-
-
-### v0.5.7 rev 2 visual refinement
-
-- Starts maximized using the normal Windows maximized state (not exclusive fullscreen).
-- Reduces peripheral Intelligence Graph glyphs to roughly half their previous footprint.
-- Keeps the central analyzed IOC visually dominant at roughly 75% of its previous glyph size.
-- Moves graph labels closer to the smaller glyphs while preserving the existing relationships and evidence model.
-
-
-Preview 3: compact relationship graph for small IOC sets; relationship summary appears as a label below the graph, outside the visualization.
+Current release: **v0.5.8**. This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
