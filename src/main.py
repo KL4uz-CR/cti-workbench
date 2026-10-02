@@ -1,12 +1,12 @@
-import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse,time
+import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse,time,math
 from pathlib import Path
-from PySide6.QtCore import QThread,Signal,Qt,QPointF
+from PySide6.QtCore import QThread,Signal,Qt,QPointF,QPoint,QPropertyAnimation,QEasingCurve,Property
 from PySide6.QtWidgets import *
-from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath,QKeySequence,QShortcut
+from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath,QKeySequence,QShortcut,QRadialGradient
 from core import normalize_ioc, safe_dict, tls_context, get_logger
-APP="CTI Workbench"; VERSION="0.5.7 rev 2"
+APP="CTI Workbench"; VERSION="0.5.8 preview 4"
 logger=get_logger()
-DARK="""QWidget{background:#0F172A;color:#F8FAFC;font-family:'Segoe UI';font-size:14px}QFrame#card,QFrame#mini{background:#1E293B;border:1px solid #334155;border-radius:10px}QLineEdit,QComboBox{background:#1E293B;color:#F8FAFC;border:1px solid #475569;border-radius:8px;padding:10px}QLineEdit:focus{border:2px solid #38BDF8}QPushButton{background:#38BDF8;color:#0F172A;border:0;border-radius:8px;padding:10px 18px;font-weight:700}QPushButton:hover{background:#7DD3FC}QPushButton:disabled{background:#334155;color:#94A3B8}QTextEdit{background:#0F172A;color:#F8FAFC;border:1px solid #334155;border-radius:8px;padding:8px;font-family:'Cascadia Mono','Consolas'}QLabel#title{color:#38BDF8;font-size:24px;font-weight:700}QLabel#section{color:#7DD3FC;font-weight:700}QLabel#muted{color:#CBD5E1}QTabWidget::pane{border:1px solid #334155}QTabBar::tab{background:#0F172A;color:#F8FAFC;padding:9px 16px;border:1px solid #334155}QTabBar::tab:selected{background:#1E293B;color:#38BDF8;font-weight:700}QToolTip{background:#1E293B;color:#F8FAFC;border:1px solid #38BDF8}"""
+DARK="""QWidget{background:#0B1026;color:#E8EDF8;font-family:'Segoe UI';font-size:13px}QFrame#card,QFrame#mini{background:#151F36;border:1px solid #273651;border-radius:14px}QFrame#card:hover,QFrame#mini:hover{border:1px solid #126C90}QLineEdit{background:#17243C;border:1px solid #2B405A;border-radius:9px;padding:11px;color:#F8FAFC}QLineEdit:focus{border:1px solid #00BCE5}QPushButton{background:#103149;color:#DCEFFF;border:1px solid #165674;border-radius:9px;padding:10px 15px;font-weight:700}QPushButton:hover{background:#154965;border:1px solid #00C7F3;color:#FFFFFF}QPushButton:disabled{background:#182338;color:#6F8398}QTextEdit,QTableWidget{background:#121B30;color:#F8FAFC;border:1px solid #2B3954;border-radius:9px;padding:7px}QHeaderView::section{background:#1B2740;color:#B9C9DD;border:0;padding:9px}QLabel#title{color:#00C9F3;font-size:21px;font-weight:750}QLabel#section{color:#DAE5F6;font-weight:750}QLabel#muted{color:#99ABC2}QScrollArea{border:0;background:#0B1026}QToolTip{background:#1B2740;color:white;border:1px solid #00C9F3}QScrollBar:vertical{background:#0B1026;width:10px}QScrollBar::handle:vertical{background:#314561;border-radius:5px}QTabWidget::pane{border:0}QTabBar::tab{background:#17233A;color:#B3C4D8;padding:10px;border:1px solid #2A3C54;border-radius:8px}QTabBar::tab:selected{background:#12425C;color:#00D0FA}QFrame#side{background:#111A30;border:1px solid #2B3954;border-radius:14px}QLabel#iocHeadline{font-size:27px;font-weight:800;color:white}QLabel#circle{font-size:28px;font-weight:800;color:white;background:#10B981;border-radius:64px}QLabel#circle[severity="warning"]{background:#F59E0B}QLabel#circle[severity="danger"]{background:#EF4444}QLabel#circle[severity="unknown"]{background:#475569}"""
 def typ(v):
  return normalize_ioc(v)[2]
 
@@ -102,7 +102,7 @@ def vt_lookup(ioc_type,value):
   ident=base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii").rstrip("=")
   endpoint="urls/"+ident
  else: return {"status":"Unsupported IOC type"}
- req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.7"})
+ req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"})
  try:
   with urllib.request.urlopen(req,timeout=20) as r: payload=json.loads(r.read().decode("utf-8","replace"))
   data=safe_dict(payload.get("data",{}))
@@ -153,7 +153,7 @@ def vt_relationship_request(path,relationship,limit=10):
  key=vt_api_key()
  if not key: return {"status":"Not configured","items":[]}
  url=f"https://www.virustotal.com/api/v3/{path}/{relationship}?limit={limit}"
- req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.7"})
+ req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"})
  try:
   with urllib.request.urlopen(req,timeout=20,context=tls_context()) as r:
    payload=json.loads(r.read().decode("utf-8","replace"))
@@ -221,7 +221,7 @@ def abusech_api_key():
 
 def post_form_json(url,data,key,timeout=20):
  body=urllib.parse.urlencode(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.7"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   return json.loads(raw)
@@ -230,7 +230,7 @@ def post_json(url,data,key,timeout=20):
  # ThreatFox documents a JSON request body. Keep this separate from URLhaus,
  # whose lookup endpoints accept form-encoded fields.
  body=json.dumps(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":"CTI-Workbench/0.5.7"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":"CTI-Workbench/0.5.8"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   ctype=(r.headers.get("Content-Type") or "").lower()
@@ -340,7 +340,7 @@ class W(QThread):
   self.done.emit(raw,code,vt,tf,uh,timings)
 class Card(QFrame):
  def __init__(self,n):
-  super().__init__();self.setObjectName("mini");v=QVBoxLayout(self);self.h=QLabel(n.upper());self.h.setObjectName("section");v.addWidget(self.h);self.b=QLabel("Waiting for analysis");self.b.setWordWrap(True);v.addWidget(self.b)
+  super().__init__();self.setObjectName("mini");v=QVBoxLayout(self);self.h=QLabel(n.upper());self.h.setObjectName("section");v.addWidget(self.h);self.b=QLabel("Waiting for analysis");self.b.setWordWrap(True);v.addWidget(self.b);v.addStretch(0)
  def set(self,x):self.b.setText(x)
  def reset_visual(self):
   self.setStyleSheet("");self.b.setStyleSheet("");self.h.setStyleSheet("")
@@ -388,7 +388,7 @@ class Card(QFrame):
 
 class GraphView(QGraphicsView):
  def __init__(self,analyze_cb):
-  super().__init__(); self.analyze_cb=analyze_cb; self.scene_=QGraphicsScene(self); self.setScene(self.scene_); self.setRenderHint(QPainter.Antialiasing); self.setMinimumHeight(420); self.setDragMode(QGraphicsView.ScrollHandDrag); self.nodes={}
+  super().__init__(); self.analyze_cb=analyze_cb; self.scene_=QGraphicsScene(self); self.setScene(self.scene_); self.setRenderHint(QPainter.Antialiasing); self.setMinimumHeight(180); self.setDragMode(QGraphicsView.ScrollHandDrag); self.nodes={}
  def _tag(self,item,label,kind):
   item.setData(0,label); item.setData(1,kind); item.setToolTip(f"{kind}: {label}\nDouble-click to analyze"); self.nodes[item]=label; return item
  def _icon(self,pos,label,kind,color,central=False):
@@ -424,26 +424,58 @@ class GraphView(QGraphicsView):
   self.scene_.clear(); self.nodes={}
   bg=QColor("#0F172A" if dark else "#F4F8FB"); fg=QColor("#F8FAFC" if dark else "#0F172A"); muted=QColor("#94A3B8" if dark else "#64748B")
   self.setBackgroundBrush(QBrush(bg))
+  # One visual node per distinct indicator. Multiple VT relationships are
+  # preserved in the summary label instead of creating overlapping nodes.
   unique=[]; seen=set()
+  def identity(row):
+   value=str(row.get("indicator") or "").strip()
+   kind=str(row.get("type") or "Unknown")
+   return (kind, value.casefold() if kind in ("Domain","URL") else value)
+  center_key=identity({"type":center_type,"indicator":center})
   for r in rows:
-   k=(r.get("type"),r.get("indicator"),r.get("relationship"))
-   if r.get("indicator")==center or k in seen: continue
-   seen.add(k); unique.append(r)
+   key=identity(r)
+   if not key[1] or key==center_key or key in seen: continue
+   seen.add(key);unique.append(r)
   unique=unique[:24]
-  radius=260; cx=0; cy=0; positions=[]; n=max(1,len(unique))
-  for idx,r in enumerate(unique):
-   a=(2*math.pi*idx/n)-math.pi/2; positions.append(QPointF(cx+radius*math.cos(a),cy+radius*math.sin(a)))
-  edgepen=QPen(QColor("#475569" if dark else "#94A3B8"),1.35)
-  for pos,r in zip(positions,unique):
-   self.scene_.addLine(cx,cy,pos.x(),pos.y(),edgepen)
-   mid=QPointF((cx+pos.x())/2,(cy+pos.y())/2); lab=self.scene_.addText(r.get("relationship","related"),QFont("Segoe UI",8)); lab.setDefaultTextColor(muted); lab.setPos(mid.x()-lab.boundingRect().width()/2,mid.y()-lab.boundingRect().height()/2)
+  cx=0;cy=0;positions=[];n=len(unique)
+  # Compact radial view for small investigations; spacious two-column lanes
+  # for dense sets. Labels are aligned away from the central target.
+  dense=n>8
+  if dense:
+   import math
+   per_side=math.ceil(n/2)
+   spacing=64
+   for idx in range(n):
+    side=-1 if idx%2==0 else 1
+    rank=idx//2
+    y=(rank-(per_side-1)/2)*spacing
+    positions.append(QPointF(side*370,y))
+  else:
+   radius=115 if n<=3 else 220
+   for idx in range(n):
+    a=(2*math.pi*idx/max(1,n))-math.pi/2
+    positions.append(QPointF(radius*math.cos(a),radius*math.sin(a)))
+  edgepen=QPen(QColor("#475569" if dark else "#94A3B8"),1.2)
+  for pos in positions:self.scene_.addLine(cx,cy,pos.x(),pos.y(),edgepen)
   colors={"Domain":"#38BDF8","IP Address":"#22C55E","URL":"#A78BFA","Hash":"#F59E0B"}
-  def add_node(pos,label,kind,central=False):
-   color=QColor("#EF4444" if central else colors.get(kind,"#7DD3FC")); self._icon(pos,label,kind,color,central)
-   shown=label if len(label)<=32 else label[:29]+"…"; t=self.scene_.addText(shown,QFont("Segoe UI",9,QFont.Bold if central else QFont.Normal)); t.setDefaultTextColor(fg); t.setPos(pos.x()-t.boundingRect().width()/2,pos.y()+(25 if central else 16)); self._tag(t,label,kind)
+  def add_node(pos,label,kind,central=False,side=0):
+   color=QColor("#EF4444" if central else colors.get(kind,"#7DD3FC"))
+   self._icon(pos,label,kind,color,central)
+   shown=label if len(label)<=37 else label[:34]+"…"
+   t=self.scene_.addText(shown,QFont("Segoe UI",10,QFont.Bold if central else QFont.Normal))
+   t.setDefaultTextColor(fg)
+   if dense and not central:
+    tx=pos.x()+20 if side<0 else pos.x()-20-t.boundingRect().width()
+    ty=pos.y()-t.boundingRect().height()/2
+   else:
+    tx=pos.x()-t.boundingRect().width()/2;ty=pos.y()+(25 if central else 18)
+   t.setPos(tx,ty);self._tag(t,label,kind)
   add_node(QPointF(cx,cy),center,center_type,True)
-  for pos,r in zip(positions,unique): add_node(pos,r.get("indicator",""),r.get("type","Unknown"),False)
-  self.scene_.setSceneRect(self.scene_.itemsBoundingRect().adjusted(-70,-70,70,70)); self.fitInView(self.scene_.sceneRect(),Qt.KeepAspectRatio)
+  for idx,(pos,r) in enumerate(zip(positions,unique)):
+   add_node(pos,r.get("indicator",""),r.get("type","Unknown"),False,-1 if idx%2==0 else 1)
+  self.scene_.setSceneRect(self.scene_.itemsBoundingRect().adjusted(-55,-55,55,55))
+  self.fitInView(self.scene_.sceneRect(),Qt.KeepAspectRatio)
+  self.setMinimumHeight(200 if n<=3 else (390 if n<=8 else 660))
  def mouseDoubleClickEvent(self,event):
   item=self.itemAt(event.position().toPoint())
   while item is not None:
@@ -483,42 +515,116 @@ class AnalysisProgress(QDialog):
  def reject(self):
   if self.completed>=7:super().reject()
 
+class VirusTotalGauge(QWidget):
+ """Source-specific vendor detection display; never a global risk score."""
+ def __init__(self,parent=None):
+  super().__init__(parent);self.setFixedSize(232,202);self._progress=0.0;self.detected=None;self.total=None;self.level="unknown"
+  self.anim=QPropertyAnimation(self,b"progress",self);self.anim.setDuration(850);self.anim.setEasingCurve(QEasingCurve.OutCubic)
+ def get_progress(self):return self._progress
+ def set_progress(self,value):self._progress=float(value);self.update()
+ progress=Property(float,get_progress,set_progress)
+ def set_result(self,detected=None,total=None,level="unknown"):
+  self.anim.stop();self.detected=detected;self.total=total;self.level=level
+  self._progress=0.0;self.anim.setStartValue(0.0);self.anim.setEndValue((detected/total) if total and detected is not None else 0.0);self.anim.start();self.update()
+ def paintEvent(self,event):
+  p=QPainter(self);p.setRenderHint(QPainter.Antialiasing)
+  color=QColor({"clear":"#26CEA0","review":"#F59E0B","warning":"#EF4444","unknown":"#718096"}.get(self.level,"#718096"))
+  rect=self.rect();cx=rect.width()/2;cy=91;r=68;start=210;span=300
+  p.setPen(QPen(QColor('#263248'),13,Qt.SolidLine,Qt.RoundCap));p.drawArc(int(cx-r),int(cy-r),2*r,2*r,start*16,-span*16)
+  p.setPen(QPen(QColor('#44516A'),2,Qt.SolidLine,Qt.RoundCap))
+  for i in range(51):
+   a=math.radians(start-span*i/50);inside=r-18;outside=r-9 if i%5==0 else r-12
+   p.drawLine(QPointF(cx+inside*math.cos(a),cy-inside*math.sin(a)),QPointF(cx+outside*math.cos(a),cy-outside*math.sin(a)))
+  if self.detected is not None and self.total:
+   # A short illuminated minimum tick keeps 0/total readable without implying a nonzero detection.
+   if self._progress>0:
+    p.setPen(QPen(color,13,Qt.SolidLine,Qt.RoundCap));p.drawArc(int(cx-r),int(cy-r),2*r,2*r,start*16,-max(1,int(span*self._progress*16)))
+  p.setPen(color);f=p.font();f.setPointSize(23);f.setBold(True);p.setFont(f)
+  p.drawText(0,49,rect.width(),49,Qt.AlignHCenter|Qt.AlignVCenter,f"{self.detected}/{self.total}" if self.total else "N/A")
+  f.setPointSize(8);f.setBold(True);p.setFont(f);p.setPen(QColor('#B9C9DD'))
+  p.drawText(0,99,rect.width(),20,Qt.AlignCenter,"VIRUSTOTAL DETECTIONS")
+  p.setPen(color);p.drawText(0,174,rect.width(),20,Qt.AlignCenter,{"clear":"NO DETECTIONS","review":"REVIEW RECOMMENDED","warning":"MULTIPLE DETECTIONS"}.get(self.level,"NO REPORT"))
+  p.end()
+
 class Win(QMainWindow):
  def __init__(self):
   super().__init__();self.setWindowTitle(f"{APP} v{VERSION}");self.resize(1120,760);c=QWidget();self.setCentralWidget(c);o=QVBoxLayout(c)
-  top=QHBoxLayout();box=QVBoxLayout();a=QLabel(APP);a.setObjectName("title");box.addWidget(a);b=QLabel("Evidence-first IOC enrichment for Windows");b.setObjectName("muted");box.addWidget(b);top.addLayout(box);top.addStretch();o.addLayout(top)
-  f=QFrame();f.setObjectName("card");v=QVBoxLayout(f);h=QLabel("ADDRESS / INDICATOR ANALYSIS");h.setObjectName("section");v.addWidget(h);r=QHBoxLayout();self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText("Enter an IP address, IP:port, domain, URL, MD5, SHA-1 or SHA-256");self.bt=QPushButton("Analyze");self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);r.addWidget(self.i,1);r.addWidget(self.bt);v.addLayout(r);self.st=QLabel("Supported inputs: IP address · IP:port · Domain · URL · MD5 · SHA-1 · SHA-256");self.st.setObjectName("muted");v.addWidget(self.st);o.addWidget(f)
-  self.tabs=QTabWidget();o.addWidget(self.tabs,1);ov=QWidget();x=QVBoxLayout(ov);x.setSpacing(10)
+  self.history=[]
+  top=QHBoxLayout();a=QLabel("◎  CTI Workbench");a.setObjectName("title");top.addWidget(a);top.addStretch();top.addWidget(QLabel("Evidence-first IOC enrichment for Windows"));o.addLayout(top)
+  split=QHBoxLayout();o.addLayout(split,1)
+  side=QVBoxLayout();side.setSpacing(12);side.setAlignment(Qt.AlignTop);sidebox=QWidget();sidebox.setFixedWidth(248);sidebox.setLayout(side);split.addWidget(sidebox)
+  f=QFrame();f.setObjectName("side");v=QVBoxLayout(f);self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText("IP, domain, URL, hash...");self.bt=QPushButton("ANALYZE");self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);v.addWidget(self.i);v.addWidget(self.bt);st=QLabel("Supports IP, IP:port, domain, URL and hashes");st.setWordWrap(True);st.setObjectName("muted");v.addWidget(st);side.addWidget(f)
+  hf=QFrame();hf.setObjectName("side");hv=QVBoxLayout(hf);hv.addWidget(QLabel("RECENT SEARCHES"));self.history_layout=QVBoxLayout();hv.addLayout(self.history_layout);side.addWidget(hf)
+  quick=QFrame();quick.setObjectName("side");qv=QVBoxLayout(quick);qv.addWidget(QLabel("QUICK NAVIGATION"));
+  scroll=QScrollArea();scroll.setWidgetResizable(True);split.addWidget(scroll,1);page=QWidget();scroll.setWidget(page);x=QVBoxLayout(page);x.setSpacing(15);x.setContentsMargins(8,0,8,18);self.scroll=scroll
+  self.jump_targets={}
+  for title in ("Threat assessment","Key information","Intelligence sources","Vendor statistics","Intelligence graph","Related indicators","Raw data"):
+   btn=QPushButton(title);btn.setCursor(Qt.PointingHandCursor);btn.clicked.connect(lambda checked=False,t=title:self.jump_to(t));qv.addWidget(btn)
+  side.addWidget(quick)
+  self.headline=QLabel("Enter an indicator to begin");self.headline.setObjectName("iocHeadline");x.addWidget(self.headline)
+  assessment=QFrame();assessment.setObjectName("card");ar=QHBoxLayout(assessment);self.assessment_text=QLabel("Threat assessment\n\nAwaiting intelligence source evidence");self.assessment_text.setWordWrap(True);ar.addWidget(self.assessment_text,1);self.vt_circle=VirusTotalGauge();ar.addWidget(self.vt_circle);x.addWidget(assessment);self.jump_targets["Threat assessment"]=assessment
   self.id=Card("ANALYZED INDICATOR");x.addWidget(self.id)
   self.cards=[Card(n) for n in ["Geolocation","Network / RDAP","DNS","VirusTotal","ThreatFox","URLhaus","Analysis state"]]
-  x.addWidget(self.cards[6])
-  src_label=QLabel("INTELLIGENCE SOURCES");src_label.setObjectName("section");x.addWidget(src_label)
-  sg=QGridLayout();sg.setHorizontalSpacing(10)
-  for col,idx in enumerate((3,4,5)):sg.addWidget(self.cards[idx],0,col)
-  x.addLayout(sg)
-  ctx_label=QLabel("CONTEXT");ctx_label.setObjectName("section");x.addWidget(ctx_label)
-  cg=QGridLayout();cg.setHorizontalSpacing(10)
+  self.cards[6].hide()
+  ctx_label=QLabel("Key information");ctx_label.setObjectName("section");x.addWidget(ctx_label);self.jump_targets["Key information"]=ctx_label
+  cg=QGridLayout();cg.setSpacing(10)
   for col,idx in enumerate((0,1,2)):cg.addWidget(self.cards[idx],0,col)
   x.addLayout(cg)
-  self.timing_info=QLabel("Source timing will appear after analysis.");self.timing_info.setObjectName("muted");x.addWidget(self.timing_info)
-  x.addStretch();self.tabs.addTab(ov,"Overview")
-  graph=QWidget();gl=QVBoxLayout(graph);gh=QHBoxLayout();self.graph_info=QLabel("Analyze an indicator. VirusTotal relationships and the graph load automatically.");self.graph_info.setObjectName("muted");gh.addWidget(self.graph_info,1);gl.addLayout(gh);self.graph=GraphView(self.graph_analyze);gl.addWidget(self.graph,1);hint=QLabel("Node icons: target · Domain · IP Address · URL · Hash   |   Colors reinforce type · Double-click an icon to analyze it");hint.setObjectName("muted");gl.addWidget(hint);self.tabs.addTab(graph,"Intelligence Graph")
-  rel=QWidget();rl=QVBoxLayout(rel)
-  rh=QHBoxLayout();self.rel_info=QLabel("Analyze an indicator. VirusTotal relationships load automatically.");self.rel_info.setObjectName("muted");rh.addWidget(self.rel_info,1);rl.addLayout(rh)
-  self.rel_table=QTableWidget(0,4);self.rel_table.setHorizontalHeaderLabels(["Type","Indicator","Relationship","Source"]);self.rel_table.setSelectionBehavior(QAbstractItemView.SelectRows);self.rel_table.setSelectionMode(QAbstractItemView.SingleSelection);self.rel_table.setEditTriggers(QAbstractItemView.NoEditTriggers);self.rel_table.horizontalHeader().setStretchLastSection(True);self.rel_table.horizontalHeader().setSectionResizeMode(1,QHeaderView.Stretch);rl.addWidget(self.rel_table,1)
-  rb=QHBoxLayout();self.rel_analyze=QPushButton("Analyze Selected");self.rel_copy=QPushButton("Copy");self.rel_copyall=QPushButton("Copy All");self.rel_export=QPushButton("Export CSV");
+  src_label=QLabel("Intelligence sources");src_label.setObjectName("section");x.addWidget(src_label);self.jump_targets["Intelligence sources"]=src_label
+  sg=QGridLayout();sg.setSpacing(10)
+  for col,idx in enumerate((3,4,5)):sg.addWidget(self.cards[idx],0,col)
+  x.addLayout(sg)
+  stat=QFrame();stat.setObjectName("card");sv=QVBoxLayout(stat);sv.addWidget(QLabel("Vendor statistics"));stats=QHBoxLayout();self.stat_labels=[]
+  for title in ("MALICIOUS","SUSPICIOUS","HARMLESS","UNDETECTED"):
+   block=QFrame();block.setObjectName("mini");bv=QVBoxLayout(block);val=QLabel("—");val.setAlignment(Qt.AlignCenter);val.setStyleSheet("font-size:24px;font-weight:800;color:#B5C5D8");lab=QLabel(title);lab.setAlignment(Qt.AlignCenter);lab.setObjectName("muted");bv.addWidget(val);bv.addWidget(lab);stats.addWidget(block);self.stat_labels.append(val)
+  sv.addLayout(stats);x.addWidget(stat);self.jump_targets["Vendor statistics"]=stat
+  graph_heading=QLabel("Intelligence graph");graph_heading.setObjectName("section");x.addWidget(graph_heading);self.jump_targets["Intelligence graph"]=graph_heading
+  self.graph=GraphView(self.graph_analyze);self.graph.setMinimumHeight(180);self.graph.setMaximumHeight(740);x.addWidget(self.graph)
+  self.graph_info=QLabel("VirusTotal relationships will appear here after analysis.");self.graph_info.setObjectName("muted");self.graph_info.setWordWrap(True);x.addWidget(self.graph_info)
+  self.rel_info=QLabel("Related indicators · Waiting for analysis");self.rel_info.setObjectName("section");x.addWidget(self.rel_info);self.jump_targets["Related indicators"]=self.rel_info
+  self.rel_table=QTableWidget(0,4);self.rel_table.setMinimumHeight(240);self.rel_table.setHorizontalHeaderLabels(["Type","Indicator","Relationship","Source"]);self.rel_table.setSelectionBehavior(QAbstractItemView.SelectRows);self.rel_table.setSelectionMode(QAbstractItemView.SingleSelection);self.rel_table.setEditTriggers(QAbstractItemView.NoEditTriggers);self.rel_table.horizontalHeader().setStretchLastSection(True);self.rel_table.horizontalHeader().setSectionResizeMode(1,QHeaderView.Stretch);x.addWidget(self.rel_table)
+  rb=QHBoxLayout();self.rel_analyze=QPushButton("Analyze Selected");self.rel_copy=QPushButton("Copy");self.rel_copyall=QPushButton("Copy All");self.rel_export=QPushButton("Export CSV")
   self.rel_analyze.clicked.connect(self.analyze_selected);self.rel_copy.clicked.connect(self.copy_selected);self.rel_copyall.clicked.connect(self.copy_all_related);self.rel_export.clicked.connect(self.export_related)
   for zbtn in (self.rel_analyze,self.rel_copy,self.rel_copyall,self.rel_export):rb.addWidget(zbtn)
-  rb.addStretch();rl.addLayout(rb);self.tabs.addTab(rel,"Related Indicators")
-  rw=QWidget();rv=QVBoxLayout(rw);self.raw=QTextEdit();self.raw.setReadOnly(True);self.raw.setPlainText("Raw upstream evidence will appear here.");rv.addWidget(self.raw);self.tabs.addTab(rw,"Raw Data");self.current_ioc=None;self.current_type=None;self.related_cache=[];self.progress_dialog=None;self.timings={};QApplication.instance().setStyleSheet(DARK)
+  x.addLayout(rb)
+  raw_label=QLabel("Raw data");raw_label.setObjectName("section");x.addWidget(raw_label);self.jump_targets["Raw data"]=raw_label
+  self.raw=QTextEdit();self.raw.setReadOnly(True);self.raw.setMinimumHeight(240);self.raw.setPlainText("Raw upstream evidence will appear here.");x.addWidget(self.raw)
+  self.timing_info=QLabel("Source timing will appear after analysis.");self.timing_info.setObjectName("muted");x.addWidget(self.timing_info)
+  self.current_ioc=None;self.current_type=None;self.related_cache=[];self.progress_dialog=None;self.timings={};QApplication.instance().setStyleSheet(DARK)
   self.shortcut_focus=QShortcut(QKeySequence("Ctrl+L"),self);self.shortcut_focus.activated.connect(self.focus_ioc)
   self.shortcut_copy=QShortcut(QKeySequence("Ctrl+C"),self);self.shortcut_copy.activated.connect(self.copy_current_ioc)
   self.shortcut_export=QShortcut(QKeySequence("Ctrl+E"),self);self.shortcut_export.activated.connect(self.export_related)
   self.bt.setToolTip("Analyze indicator (Enter)");self.i.setToolTip("Indicator input (Ctrl+L)");self.rel_export.setToolTip("Export related indicators (Ctrl+E)")
+ def jump_to(self,title):
+  widget=self.jump_targets.get(title)
+  if widget:self.scroll.verticalScrollBar().setValue(widget.mapTo(self.scroll.widget(),QPoint(0,0)).y())
+ def add_recent(self,ioc):
+  if ioc in self.history:self.history.remove(ioc)
+  self.history.insert(0,ioc);self.history=self.history[:6]
+  while self.history_layout.count():
+   item=self.history_layout.takeAt(0)
+   if item.widget():item.widget().deleteLater()
+  for value in self.history:
+   button=QPushButton(value);button.setToolTip(value + "\nClick to analyze");button.clicked.connect(lambda checked=False,v=value:self.reanalyze(v));self.history_layout.addWidget(button)
+ def reanalyze(self,value):
+  if self.bt.isEnabled():self.i.setText(value);self.go()
+ def update_visuals(self,vt,finding,headline,summary):
+  self.headline.setText(self.current_ioc or "Indicator")
+  self.assessment_text.setText("Threat assessment\n\n"+headline+"\n"+summary)
+  self.assessment_text.setStyleSheet("font-size:15px;font-weight:650;color:" + ("#F6AD55" if finding else "#B7E4D8") + ";padding:12px")
+  metrics=vt_metrics(vt)
+  if metrics:
+   detected,total,level,*_=metrics
+   self.vt_circle.set_result(detected,total,level)
+   for label,value,color in zip(self.stat_labels,metrics[3:],("#EF4444","#F59E0B","#10B981","#9AAAC1")):
+    label.setText(str(value));label.setStyleSheet(f"font-size:24px;font-weight:800;color:{color}")
+  else:
+   self.vt_circle.set_result()
+   for label in self.stat_labels:label.setText("—")
  def go(self):
   entered=self.i.text().strip();original,z,t=normalize_ioc(entered)
   if not entered or t=="Unknown":QMessageBox.warning(self,APP,"Enter a valid IOC.");return
-  self.current_ioc=z;self.current_type=t;self.related_cache=[];self.timings={};self.timing_info.setText("Measuring source response times…");self.rel_table.setRowCount(0);self.rel_info.setText("Analysis in progress. Related indicators will load automatically.");self.graph_info.setText("Analysis in progress. Intelligence graph will load automatically.");self.graph.scene_.clear()
+  self.add_recent(z);self.current_ioc=z;self.current_type=t;self.related_cache=[];self.timings={};self.timing_info.setText("Measuring source response times…");self.rel_table.setRowCount(0);self.rel_info.setText("Analysis in progress. Related indicators will load automatically.");self.graph_info.setText("Analysis in progress. Intelligence graph will load automatically.");self.graph.scene_.clear();self.graph.setFixedHeight(210)
   self.bt.setEnabled(False);self.bt.setText("Analyzing…");self.progress_dialog=AnalysisProgress(self,z);self.progress_dialog.update_stage(1,"Resolving DNS / WHOIS enrichment");self.progress_dialog.show()
   self.w=W(z,t);self.w.progress.connect(self.progress_update);self.w.done.connect(lambda a,b,c,d,e,f:self.done(original,z,t,a,b,c,d,e,f));self.w.start()
  def done(self,original,z,t,s,code,vt,tfv,uhv,timings):
@@ -549,6 +655,7 @@ class Win(QMainWindow):
   finding = (vm is not None and vm[0] > 0) or tfv.get("status")=="IOC FOUND" or uhv.get("status")=="IOC FOUND"
   headline = "⚠ THREAT INTELLIGENCE FOUND" if finding else "✓ NO THREAT INTELLIGENCE FOUND"
   analysis_text = headline + "\n" + summary
+  self.update_visuals(vt,finding,headline,summary)
   if t=="Domain":
    d=domain_data(s); ws=whois_state(d,s)
    identity=f"Original IOC: {original}\nNormalized: {z}" if original!=z else z
@@ -622,9 +729,13 @@ class Win(QMainWindow):
   self.rel_info.setText(msg)
   self.progress_update(6,"Building intelligence graph")
   graph_started=time.perf_counter();self.graph.render_graph(self.current_ioc,self.current_type,filtered,True);self.timings["Intelligence graph"]=time.perf_counter()-graph_started
-  gmsg=f"{len(filtered)} related indicator(s) visualized from VirusTotal."
+  from collections import Counter
+  relationships=Counter(str(r.get("relationship") or "related") for r in filtered[:24])
+  details=" · ".join(f"{name}: {count}" for name,count in sorted(relationships.items()))
+  gmsg=f"VirusTotal · {len({(r.get("type"),str(r.get("indicator", "")).casefold()) for r in filtered[:24] if r.get("indicator")})} distinct indicator(s) visualized" + (f" · Relationships: {details}" if details else " · No relationships to display")
   if notes:gmsg+="  " + " · ".join(notes)
   self.graph_info.setText(gmsg)
+  self.graph.setFixedHeight(230 if len(filtered)<=3 else (400 if len(filtered)<=8 else 680))
   total=sum(self.timings.get(k,0) for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph"))
   self.timing_info.setText("  ·  ".join([f"{k}: {self.timings[k]:.2f} s" for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph") if k in self.timings])+f"  ·  Total: {total:.2f} s")
   self.finish_progress("Analysis complete")
@@ -641,7 +752,7 @@ class Win(QMainWindow):
   self.auto_related_done(rows,notes,elapsed)
  def graph_analyze(self,value):
   if not value:return
-  self.i.setText(value);self.tabs.setCurrentIndex(0);self.go()
+  self.i.setText(value);self.scroll.verticalScrollBar().setValue(0);self.go()
  def focus_ioc(self):
   self.i.setFocus();self.i.selectAll()
  def copy_current_ioc(self):
@@ -654,7 +765,7 @@ class Win(QMainWindow):
  def analyze_selected(self):
   v=self.selected_indicator()
   if not v:return
-  self.i.setText(v);self.tabs.setCurrentIndex(0);self.go()
+  self.i.setText(v);self.scroll.verticalScrollBar().setValue(0);self.go()
  def copy_selected(self):
   v=self.selected_indicator()
   if v:QApplication.clipboard().setText(v)

@@ -1,3 +1,23 @@
+# CTI Workbench v0.5.8 Preview 4 (test build)
+
+Dense graphs now use two-column indicator lanes, retaining a compact radial layout for small sets. Labels are separated from nodes; graph relationship summaries remain outside the visualization. The gauge caption has additional clearance. This package includes the Preview 3 runtime NameError correction. Live API/UI regression testing is required on Windows before release. Do not commit API credentials.
+
+# CTI Workbench v0.5.8 Preview 3 (reconstruida)
+
+Cambios: versión visible corregida; grafo con nodos únicos por tipo e indicador, incluso cuando VirusTotal devuelve varias relaciones; distribución radial alternada; resumen de relaciones fuera del grafo. El odómetro continúa mostrando exclusivamente detecciones de VirusTotal, no una puntuación global de riesgo.
+
+La validación visual y de las API debe realizarse en Windows antes de integrar en Git.
+
+---
+
+# CTI Workbench v0.5.8 — Visual preview 3
+
+This is an early visual prototype based on the stable v0.5.7 rev 2 code. It preserves the existing source integrations, evidence logic, relationship table and static interactive graph. The interface now uses a continuous scrollable investigation view, quick navigation, recent searches (session-only), VirusTotal detection circle and vendor statistics.
+
+This is a test build, not a validated release. The 9 core tests pass; live API/UI regression testing must be done on the user’s Windows machine. Do not commit local config JSON files or API keys.
+
+Recent searches exist only during the running session. The circle reports VirusTotal vendor detections, **not** an overall safety score. No matches do not imply safety.
+
 # CTI Workbench v0.5.7 rev 2
 
 **Evidence-first IOC enrichment for Windows.**
@@ -119,3 +139,6 @@ This repository is intended to remain private unless its owner explicitly decide
 - Reduces peripheral Intelligence Graph glyphs to roughly half their previous footprint.
 - Keeps the central analyzed IOC visually dominant at roughly 75% of its previous glyph size.
 - Moves graph labels closer to the smaller glyphs while preserving the existing relationships and evidence model.
+
+
+Preview 3: compact relationship graph for small IOC sets; relationship summary appears as a label below the graph, outside the visualization.
