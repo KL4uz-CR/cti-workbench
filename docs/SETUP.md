@@ -59,7 +59,7 @@ Never commit either real file. They are explicitly excluded by `.gitignore`.
 
 If `iocinfo` is not found or the environment becomes damaged, delete `.venv` and run `setup.ps1` again.
 
-If API cards show `Not configured`, verify the corresponding JSON file and key.
+If API cards show `Not configured`, verify Settings, environment variables, or the corresponding JSON file and key.
 
 Do not disable TLS certificate validation. The project uses `certifi` to maintain certificate verification.
 
@@ -73,3 +73,18 @@ After setup, core IOC normalization tests can be run with:
 ```
 
 Runtime diagnostics are written to `logs\cti-workbench.log`.
+
+## Settings (v0.6.0 development)
+
+Open the gear button in the application's header. Enter a new API key and select
+**Save** to store it in Windows Credential Manager. **Test Connection** checks
+an entered key, or the effective saved key when the field is empty. It performs
+a fixed benign lookup and may consume provider API quota.
+
+The application resolves credentials in this order:
+`VT_API_KEY` / `ABUSECH_AUTH_KEY` environment variable, Windows Credential
+Manager, then existing JSON configuration. JSON files are preserved unchanged.
+If a higher-priority environment variable exists, a newly saved key will not
+become effective until the variable is removed. Windows Credential Manager is
+required for this version; secure-store failures are reported rather than
+silently falling back to JSON.

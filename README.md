@@ -116,3 +116,9 @@ cti-workbench/
 ## Repository status
 
 Current release: **v0.5.8**. This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
+
+## v0.6.1 development — Settings
+
+The Settings gear allows storing VirusTotal and abuse.ch credentials in Windows
+Credential Manager using `keyring`. Existing JSON configuration remains
+compatible and unchanged. See `docs/SETUP.md` and `docs/SECURITY.md`.

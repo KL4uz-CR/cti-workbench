@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "CTI Workbench v0.5.8 preview 3 - Setup" -ForegroundColor Cyan
+Write-Host "CTI Workbench v0.6.1-dev - Setup" -ForegroundColor Cyan
 
 if (-not (Get-Command py -ErrorAction SilentlyContinue) -and -not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Host "Python 3 is required. Install Python for Windows, then run this script again." -ForegroundColor Red
@@ -26,5 +26,5 @@ if (-not (Test-Path ".\config\abusech.json")) {
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
-Write-Host "1. Add your API keys to the two config JSON files."
+Write-Host "1. Configure API keys using Settings (Windows Credential Manager), or keep existing JSON files."
 Write-Host "2. Run: .\run.ps1"

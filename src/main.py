@@ -1,12 +1,24 @@
 import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse,time,math
 from pathlib import Path
-from PySide6.QtCore import QThread,Signal,Qt,QPointF,QPoint,QPropertyAnimation,QEasingCurve,Property
+from PySide6.QtCore import QSize,QThread,Signal,Qt,QPointF,QPoint,QPropertyAnimation,QEasingCurve,Property
 from PySide6.QtWidgets import *
-from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath,QKeySequence,QShortcut,QRadialGradient
-from core import normalize_ioc, safe_dict, tls_context, get_logger
-APP="CTI Workbench"; VERSION="0.5.8 preview 4"
+from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath,QKeySequence,QShortcut,QRadialGradient,QIcon,QPixmap
+from core import normalize_ioc, safe_dict, tls_context, get_logger, APP_VERSION
+from credentials import resolve, CredentialStoreError
+from settings_dialog import SettingsDialog
+APP="CTI Workbench"; VERSION=APP_VERSION
 logger=get_logger()
 DARK="""QWidget{background:#0B1026;color:#E8EDF8;font-family:'Segoe UI';font-size:13px}QFrame#card,QFrame#mini{background:#151F36;border:1px solid #273651;border-radius:14px}QFrame#card:hover,QFrame#mini:hover{border:1px solid #126C90}QLineEdit{background:#17243C;border:1px solid #2B405A;border-radius:9px;padding:11px;color:#F8FAFC}QLineEdit:focus{border:1px solid #00BCE5}QPushButton{background:#103149;color:#DCEFFF;border:1px solid #165674;border-radius:9px;padding:10px 15px;font-weight:700}QPushButton:hover{background:#154965;border:1px solid #00C7F3;color:#FFFFFF}QPushButton:disabled{background:#182338;color:#6F8398}QTextEdit,QTableWidget{background:#121B30;color:#F8FAFC;border:1px solid #2B3954;border-radius:9px;padding:7px}QHeaderView::section{background:#1B2740;color:#B9C9DD;border:0;padding:9px}QLabel#title{color:#00C9F3;font-size:21px;font-weight:750}QLabel#section{color:#DAE5F6;font-weight:750}QLabel#muted{color:#99ABC2}QScrollArea{border:0;background:#0B1026}QToolTip{background:#1B2740;color:white;border:1px solid #00C9F3}QScrollBar:vertical{background:#0B1026;width:10px}QScrollBar::handle:vertical{background:#314561;border-radius:5px}QTabWidget::pane{border:0}QTabBar::tab{background:#17233A;color:#B3C4D8;padding:10px;border:1px solid #2A3C54;border-radius:8px}QTabBar::tab:selected{background:#12425C;color:#00D0FA}QFrame#side{background:#111A30;border:1px solid #2B3954;border-radius:14px}QLabel#iocHeadline{font-size:27px;font-weight:800;color:white}QLabel#circle{font-size:28px;font-weight:800;color:white;background:#10B981;border-radius:64px}QLabel#circle[severity="warning"]{background:#F59E0B}QLabel#circle[severity="danger"]{background:#EF4444}QLabel#circle[severity="unknown"]{background:#475569}"""
+def settings_icon():
+ from PySide6.QtSvg import QSvgRenderer
+ svg = b'''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#33CFCE" stroke-width="1.7" stroke-linejoin="round"><polygon points="7.85,4.81 9.30,4.15 9.56,2.20 14.44,2.20 14.70,4.15 16.15,4.81 16.15,4.81 17.45,5.74 19.27,4.98 21.71,9.22 20.15,10.42 20.30,12.00 20.30,12.00 20.15,13.58 21.71,14.78 19.27,19.02 17.45,18.26 16.15,19.19 16.15,19.19 14.70,19.85 14.44,21.80 9.56,21.80 9.30,19.85 7.85,19.19 7.85,19.19 6.55,18.26 4.73,19.02 2.29,14.78 3.85,13.58 3.70,12.00 3.70,12.00 3.85,10.42 2.29,9.22 4.73,4.98 6.55,5.74 7.85,4.81"/><circle cx="12" cy="12" r="3.1"/></svg>'''
+ pixmap = QPixmap(24,24)
+ pixmap.fill(Qt.transparent)
+ painter = QPainter(pixmap)
+ QSvgRenderer(svg).render(painter)
+ painter.end()
+ return QIcon(pixmap)
+
 def typ(v):
  return normalize_ioc(v)[2]
 
@@ -83,17 +95,12 @@ def url_data(t):
  if a!="—": ips=a
  return host,ips
 def vt_api_key():
- key=os.environ.get("VT_API_KEY","").strip()
- if key: return key
- cfg=Path(__file__).resolve().parent.parent/"config"/"virustotal.json"
- try:
-  if cfg.exists(): return str(json.loads(cfg.read_text(encoding="utf-8")).get("api_key","")).strip()
- except Exception: pass
- return ""
+ return resolve("virustotal").value
 
 def vt_lookup(ioc_type,value):
  """Read an existing VirusTotal report. Never submits/rescans an IOC."""
- key=vt_api_key()
+ try: key=vt_api_key()
+ except CredentialStoreError: return {"status":"Credential store unavailable"}
  if not key: return {"status":"Not configured"}
  if ioc_type=="Domain": endpoint="domains/"+value
  elif ioc_type=="IP Address": endpoint="ip_addresses/"+value
@@ -102,7 +109,7 @@ def vt_lookup(ioc_type,value):
   ident=base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii").rstrip("=")
   endpoint="urls/"+ident
  else: return {"status":"Unsupported IOC type"}
- req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"})
+ req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":f"CTI-Workbench/{APP_VERSION}"})
  try:
   with urllib.request.urlopen(req,timeout=20) as r: payload=json.loads(r.read().decode("utf-8","replace"))
   data=safe_dict(payload.get("data",{}))
@@ -115,8 +122,8 @@ def vt_lookup(ioc_type,value):
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
  except Exception as e:
-  logger.warning("VirusTotal lookup failed for %s: %s",ioc_type,e)
-  return {"status":"Source unavailable","detail":str(e)}
+  logger.warning("VirusTotal lookup failed for %s",ioc_type)
+  return {"status":"Source unavailable","detail":"Request failed; check connection and configuration"}
 
 def vt_metrics(v):
  status=v.get("status","No data")
@@ -150,10 +157,11 @@ def vt_object_path(ioc_type,value):
  return None
 
 def vt_relationship_request(path,relationship,limit=10):
- key=vt_api_key()
+ try: key=vt_api_key()
+ except CredentialStoreError: return {"status":"Credential store unavailable","items":[]}
  if not key: return {"status":"Not configured","items":[]}
  url=f"https://www.virustotal.com/api/v3/{path}/{relationship}?limit={limit}"
- req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"})
+ req=urllib.request.Request(url,headers={"x-apikey":key,"Accept":"application/json","User-Agent":f"CTI-Workbench/{APP_VERSION}"})
  try:
   with urllib.request.urlopen(req,timeout=20,context=tls_context()) as r:
    payload=json.loads(r.read().decode("utf-8","replace"))
@@ -168,8 +176,8 @@ def vt_relationship_request(path,relationship,limit=10):
   if e.code==429:return {"status":"Rate limit reached","items":[]}
   return {"status":f"HTTP {e.code}","items":[]}
  except Exception as e:
-  logger.warning("VirusTotal relationship lookup failed (%s): %s",relationship,e)
-  return {"status":"Source unavailable","items":[],"detail":str(e)}
+  logger.warning("VirusTotal relationship lookup failed (%s)",relationship)
+  return {"status":"Source unavailable","items":[],"detail":"Request failed; check connection and configuration"}
 
 def related_indicator_rows(ioc_type,value):
  """Return evidence-backed VT relationships only; no inferred relationships."""
@@ -211,17 +219,11 @@ class RelatedWorker(QThread):
   started=time.perf_counter();rows,notes=related_indicator_rows(self.t,self.v);self.done.emit(rows,notes,time.perf_counter()-started)
 
 def abusech_api_key():
- key=os.environ.get("ABUSECH_AUTH_KEY","").strip()
- if key: return key
- cfg=Path(__file__).resolve().parent.parent/"config"/"abusech.json"
- try:
-  if cfg.exists(): return str(json.loads(cfg.read_text(encoding="utf-8")).get("auth_key","")).strip()
- except Exception: pass
- return ""
+ return resolve("abusech").value
 
 def post_form_json(url,data,key,timeout=20):
  body=urllib.parse.urlencode(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":"CTI-Workbench/0.5.8"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","User-Agent":f"CTI-Workbench/{APP_VERSION}"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   return json.loads(raw)
@@ -230,7 +232,7 @@ def post_json(url,data,key,timeout=20):
  # ThreatFox documents a JSON request body. Keep this separate from URLhaus,
  # whose lookup endpoints accept form-encoded fields.
  body=json.dumps(data).encode("utf-8")
- req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":"CTI-Workbench/0.5.8"},method="POST")
+ req=urllib.request.Request(url,data=body,headers={"Auth-Key":key,"Accept":"application/json","Content-Type":"application/json","User-Agent":f"CTI-Workbench/{APP_VERSION}"},method="POST")
  with urllib.request.urlopen(req,timeout=timeout,context=tls_context()) as r:
   raw=r.read().decode("utf-8","replace")
   ctype=(r.headers.get("Content-Type") or "").lower()
@@ -240,7 +242,8 @@ def post_json(url,data,key,timeout=20):
    raise RuntimeError(f"ThreatFox returned a non-JSON response (HTTP {getattr(r,'status','?')}, Content-Type: {ctype or 'unknown'})")
 
 def threatfox_lookup(ioc_type,value):
- key=abusech_api_key()
+ try: key=abusech_api_key()
+ except CredentialStoreError: return {"status":"Credential store unavailable"}
  if not key:return {"status":"Not configured"}
  try:
   if ioc_type=="Hash": data={"query":"search_hash","hash":value}
@@ -250,8 +253,11 @@ def threatfox_lookup(ioc_type,value):
   payload=post_json("https://threatfox-api.abuse.ch/api/v1/",data,key)
   qs=str(payload.get("query_status",""))
   rows=payload.get("data") or []
-  if qs in ("no_result","no_results") or not rows:return {"status":"No match"}
-  if qs!="ok":return {"status":qs or "Source error"}
+  if qs in ("no_result","no_results"):return {"status":"No match"}
+  if qs!="ok":return {"status":"Source error"}
+  if not isinstance(rows,list):return {"status":"Source error"}
+  if not rows:return {"status":"No match"}
+  if not all(isinstance(row,dict) for row in rows):return {"status":"Source error"}
   r=rows[0] if isinstance(rows,list) else rows
   return {"status":"IOC FOUND","count":len(rows) if isinstance(rows,list) else 1,"malware":r.get("malware_printable") or r.get("malware") or "—","threat":r.get("threat_type_desc") or r.get("threat_type") or "—","confidence":r.get("confidence_level","—"),"first_seen":r.get("first_seen","—"),"last_seen":r.get("last_seen") or "—","ioc":r.get("ioc","—")}
  except urllib.error.HTTPError as e:
@@ -259,33 +265,71 @@ def threatfox_lookup(ioc_type,value):
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
  except Exception as e:
-  logger.warning("ThreatFox lookup failed for %s: %s",ioc_type,e)
-  return {"status":"Source error","detail":str(e)}
+  logger.warning("ThreatFox lookup failed for %s",ioc_type)
+  return {"status":"Source error","detail":"Request failed; check connection and configuration"}
 
 def urlhaus_lookup(ioc_type,value):
- key=abusech_api_key()
+ try: key=abusech_api_key()
+ except CredentialStoreError: return {"status":"Credential store unavailable"}
  if not key:return {"status":"Not configured"}
  try:
-  if ioc_type=="URL": endpoint="https://urlhaus-api.abuse.ch/v1/url/"; data={"url":value}
+  if ioc_type=="URL":
+   endpoint="https://urlhaus-api.abuse.ch/v1/url/"
+   data={"url":value}
   elif ioc_type in ("Domain","IP Address"):
-   endpoint="https://urlhaus-api.abuse.ch/v1/host/"; data={"host":value}
+   endpoint="https://urlhaus-api.abuse.ch/v1/host/"
+   data={"host":value}
   elif ioc_type=="Hash":
-   endpoint="https://urlhaus-api.abuse.ch/v1/payload/"; data={"sha256_hash" if len(value)==64 else "md5_hash":value}
-  else:return {"status":"Unsupported IOC type"}
+   endpoint="https://urlhaus-api.abuse.ch/v1/payload/"
+   data={"sha256_hash" if len(value)==64 else "md5_hash":value}
+  else:
+   return {"status":"Unsupported IOC type"}
+
   payload=post_form_json(endpoint,data,key)
+  if not isinstance(payload,dict):
+   return {"status":"Source error"}
+
   qs=str(payload.get("query_status",""))
-  if qs in ("no_results","no_result"):return {"status":"No match"}
-  if qs!="ok":return {"status":qs or "Source error"}
-  urls=payload.get("urls") or []
-  first=urls[0] if isinstance(urls,list) and urls else payload
-  return {"status":"IOC FOUND","count":len(urls) if isinstance(urls,list) and urls else 1,"url_status":first.get("url_status",payload.get("url_status","—")),"threat":first.get("threat",payload.get("threat","—")),"tags":first.get("tags",payload.get("tags")) or [],"date_added":first.get("date_added",payload.get("date_added","—")),"url":first.get("url",payload.get("url","—"))}
+
+  if qs in ("no_results","no_result"):
+   return {"status":"No match"}
+
+  if qs!="ok":
+   return {"status":"Source error"}
+
+  if ioc_type in ("Domain","IP Address"):
+   urls=payload.get("urls")
+   if not isinstance(urls,list):
+    return {"status":"Source error"}
+   if not urls:
+    return {"status":"No match"}
+   if not all(isinstance(item,dict) for item in urls):
+    return {"status":"Source error"}
+   first=urls[0]
+   count=len(urls)
+  else:
+   first=payload
+   count=1
+   if not payload.get("url") and not payload.get("sha256_hash") and not payload.get("md5_hash"):
+    return {"status":"Source error"}
+
+  return {
+   "status":"IOC FOUND",
+   "count":count,
+   "url_status":first.get("url_status",payload.get("url_status","—")),
+   "threat":first.get("threat",payload.get("threat","—")),
+   "tags":first.get("tags",payload.get("tags")) or [],
+   "date_added":first.get("date_added",payload.get("date_added","—")),
+   "url":first.get("url",payload.get("url","—"))
+  }
+
  except urllib.error.HTTPError as e:
   if e.code in (401,403):return {"status":"Authentication error"}
   if e.code==429:return {"status":"Rate limit reached"}
   return {"status":f"HTTP {e.code}"}
- except Exception as e:
-  logger.warning("URLhaus lookup failed for %s: %s",ioc_type,e)
-  return {"status":"Source unavailable","detail":str(e)}
+ except Exception:
+  logger.warning("URLhaus lookup failed for %s",ioc_type)
+  return {"status":"Source unavailable","detail":"Request failed; check connection and configuration"}
 
 def tf_text(v):
  if v.get("status")!="IOC FOUND":return v.get("status","No data")
@@ -318,16 +362,17 @@ class W(QThread):
    logger.error("iocinfo path is not a file: %s",exe)
   else:
    try:
-    logger.info("Analysis started: type=%s indicator=%s",self.t,self.x)
+    logger.info("Analysis started: type=%s",self.t)
     q=subprocess.run([exe,self.x],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90,env=e,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
     raw=((q.stdout or "")+("\n"+q.stderr if q.stderr else "")).strip(); code=q.returncode
     logger.info("iocinfo completed: returncode=%s",code)
    except subprocess.TimeoutExpired:
     raw="iocinfo timed out after 90 seconds"; code=124
     logger.warning("iocinfo timed out after 90 seconds")
-   except Exception as z:
-    raw=str(z); code=1
-    logger.exception("iocinfo execution failed")
+   except Exception:
+    raw="iocinfo execution failed; check installation and configuration"
+    code=1
+    logger.error("iocinfo execution failed")
   timings["DNS / WHOIS"]=time.perf_counter()-ioc_started
   self.progress.emit(2,"Querying VirusTotal")
   started=time.perf_counter();vt=vt_lookup(self.t,self.x);timings["VirusTotal"]=time.perf_counter()-started
@@ -550,7 +595,7 @@ class Win(QMainWindow):
  def __init__(self):
   super().__init__();self.setWindowTitle(f"{APP} v{VERSION}");self.resize(1120,760);c=QWidget();self.setCentralWidget(c);o=QVBoxLayout(c)
   self.history=[]
-  top=QHBoxLayout();a=QLabel("◎  CTI Workbench");a.setObjectName("title");top.addWidget(a);top.addStretch();top.addWidget(QLabel("Evidence-first IOC enrichment for Windows"));o.addLayout(top)
+  top=QHBoxLayout();a=QLabel("◎  CTI Workbench");a.setObjectName("title");top.addWidget(a);top.addStretch();self.settings_button=QPushButton("Settings");self.settings_button.setObjectName("settingsButton");self.settings_button.setToolTip("Settings");self.settings_button.setFixedSize(132,40);self.settings_button.setIcon(settings_icon());self.settings_button.setIconSize(QSize(26,26));self.settings_button.setStyleSheet("QPushButton#settingsButton{padding:0 12px;background:#103149;color:#FFFFFF;border:1px solid #165674;border-radius:9px;font-weight:700;font-size:14px;text-align:center}QPushButton#settingsButton:hover{background:#154965;border-color:#00C7F3}");self.settings_button.clicked.connect(self.open_settings);top.addWidget(self.settings_button);o.addLayout(top)
   split=QHBoxLayout();o.addLayout(split,1)
   side=QVBoxLayout();side.setSpacing(12);side.setAlignment(Qt.AlignTop);sidebox=QWidget();sidebox.setFixedWidth(248);sidebox.setLayout(side);split.addWidget(sidebox)
   f=QFrame();f.setObjectName("side");v=QVBoxLayout(f);self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText("IP, domain, URL, hash...");self.bt=QPushButton("ANALYZE");self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);v.addWidget(self.i);v.addWidget(self.bt);st=QLabel("Supports IP, IP:port, domain, URL and hashes");st.setWordWrap(True);st.setObjectName("muted");v.addWidget(st);side.addWidget(f)
@@ -750,6 +795,9 @@ class Win(QMainWindow):
   if self.related_cache:self.graph.render_graph(self.current_ioc,self.current_type,self.related_cache,True)
  def graph_done(self,rows,notes,elapsed=0.0):
   self.auto_related_done(rows,notes,elapsed)
+ def open_settings(self):
+  dialog=SettingsDialog(self);dialog.exec()
+
  def graph_analyze(self,value):
   if not value:return
   self.i.setText(value);self.scroll.verticalScrollBar().setValue(0);self.go()
