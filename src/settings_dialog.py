@@ -93,6 +93,21 @@ class SettingsDialog(QDialog):
             test = QPushButton("Test Connection")
             store = QPushButton("Save")
             remove = QPushButton("Remove")
+            test.setObjectName("testButton")
+            store.setObjectName("saveButton")
+            remove.setObjectName("removeButton")
+            store.setStyleSheet(
+                "QPushButton#saveButton{background:#145C55;color:#FFFFFF;"
+                "border:1px solid #1D8A7B;font-weight:750}"
+                "QPushButton#saveButton:hover{background:#187468}"
+            )
+            remove.setToolTip("Remove the stored credential")
+            remove.setStyleSheet(
+                "QPushButton#removeButton{background:#3B2D20;color:#F6C98B;"
+                "border:1px solid #80603A;font-weight:600}"
+                "QPushButton#removeButton:hover{background:#513A25;"
+                "border-color:#B78A50}"
+            )
             for button in (test, store, remove):
                 buttons.addWidget(button)
             form.addLayout(buttons)
@@ -130,7 +145,7 @@ class SettingsDialog(QDialog):
             credential = resolve(provider)
             label.setText("Credential source: " + credential.source)
         except CredentialStoreError:
-            label.setText("Credential source: secure store error")
+            label.setText("Windows Credential Manager unavailable. Check its availability and try again.")
 
     def _save(self, provider):
         source, field, *_ = self._controls[provider]

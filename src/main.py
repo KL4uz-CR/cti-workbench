@@ -8,7 +8,7 @@ from credentials import resolve, CredentialStoreError
 from settings_dialog import SettingsDialog
 APP="CTI Workbench"; VERSION=APP_VERSION
 logger=get_logger()
-DARK="""QWidget{background:#0B1026;color:#E8EDF8;font-family:'Segoe UI';font-size:13px}QFrame#card,QFrame#mini{background:#151F36;border:1px solid #273651;border-radius:14px}QFrame#card:hover,QFrame#mini:hover{border:1px solid #126C90}QLineEdit{background:#17243C;border:1px solid #2B405A;border-radius:9px;padding:11px;color:#F8FAFC}QLineEdit:focus{border:1px solid #00BCE5}QPushButton{background:#103149;color:#DCEFFF;border:1px solid #165674;border-radius:9px;padding:10px 15px;font-weight:700}QPushButton:hover{background:#154965;border:1px solid #00C7F3;color:#FFFFFF}QPushButton:disabled{background:#182338;color:#6F8398}QTextEdit,QTableWidget{background:#121B30;color:#F8FAFC;border:1px solid #2B3954;border-radius:9px;padding:7px}QHeaderView::section{background:#1B2740;color:#B9C9DD;border:0;padding:9px}QLabel#title{color:#00C9F3;font-size:21px;font-weight:750}QLabel#section{color:#DAE5F6;font-weight:750}QLabel#muted{color:#99ABC2}QScrollArea{border:0;background:#0B1026}QToolTip{background:#1B2740;color:white;border:1px solid #00C9F3}QScrollBar:vertical{background:#0B1026;width:10px}QScrollBar::handle:vertical{background:#314561;border-radius:5px}QTabWidget::pane{border:0}QTabBar::tab{background:#17233A;color:#B3C4D8;padding:10px;border:1px solid #2A3C54;border-radius:8px}QTabBar::tab:selected{background:#12425C;color:#00D0FA}QFrame#side{background:#111A30;border:1px solid #2B3954;border-radius:14px}QLabel#iocHeadline{font-size:27px;font-weight:800;color:white}QLabel#circle{font-size:28px;font-weight:800;color:white;background:#10B981;border-radius:64px}QLabel#circle[severity="warning"]{background:#F59E0B}QLabel#circle[severity="danger"]{background:#EF4444}QLabel#circle[severity="unknown"]{background:#475569}"""
+DARK="""QWidget{background:#0B1026;color:#E8EDF8;font-family:'Segoe UI';font-size:13px}QFrame#card,QFrame#mini{background:#151F36;border:1px solid #273651;border-radius:14px}QFrame#card:hover,QFrame#mini:hover{border:1px solid #126C90}QLineEdit{background:#17243C;border:1px solid #2B405A;border-radius:9px;padding:11px;color:#F8FAFC}QLineEdit:focus{border:1px solid #00BCE5}QPushButton{background:#103149;color:#DCEFFF;border:1px solid #165674;border-radius:9px;padding:10px 15px;font-weight:700}QPushButton:hover{background:#154965;border:1px solid #00C7F3;color:#FFFFFF}QPushButton:disabled{background:#182338;color:#6F8398}QTextEdit,QTableWidget{background:#121B30;color:#F8FAFC;border:1px solid #2B3954;border-radius:9px;padding:7px}QHeaderView::section{background:#1B2740;color:#B9C9DD;border:0;padding:9px}QLabel#title{color:#00C9F3;font-size:21px;font-weight:750}QLabel#section{color:#DAE5F6;font-weight:750}QLabel#muted{color:#99ABC2}QScrollArea{border:0;background:#0B1026}QToolTip{background:#1B2740;color:white;border:1px solid #00C9F3}QScrollBar:vertical{background:#0B1026;width:10px}QScrollBar::handle:vertical{background:#314561;border-radius:5px}QTabWidget::pane{border:0}QTabBar::tab{background:#17233A;color:#B3C4D8;padding:10px;border:1px solid #2A3C54;border-radius:8px}QTabBar::tab:selected{background:#12425C;color:#00D0FA}QFrame#side{background:#111A30;border:1px solid #2B3954;border-radius:14px}QFrame#sideSection{background:transparent;border:0}QFrame#sideSection QLabel{background:transparent;color:#DAE5F6;font-size:12px;font-weight:750}QLabel#iocHeadline{font-size:27px;font-weight:800;color:white}QLabel#circle{font-size:28px;font-weight:800;color:white;background:#10B981;border-radius:64px}QLabel#circle[severity="warning"]{background:#F59E0B}QLabel#circle[severity="danger"]{background:#EF4444}QLabel#circle[severity="unknown"]{background:#475569}"""
 def settings_icon():
  from PySide6.QtSvg import QSvgRenderer
  svg = b'''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#33CFCE" stroke-width="1.7" stroke-linejoin="round"><polygon points="7.85,4.81 9.30,4.15 9.56,2.20 14.44,2.20 14.70,4.15 16.15,4.81 16.15,4.81 17.45,5.74 19.27,4.98 21.71,9.22 20.15,10.42 20.30,12.00 20.30,12.00 20.15,13.58 21.71,14.78 19.27,19.02 17.45,18.26 16.15,19.19 16.15,19.19 14.70,19.85 14.44,21.80 9.56,21.80 9.30,19.85 7.85,19.19 7.85,19.19 6.55,18.26 4.73,19.02 2.29,14.78 3.85,13.58 3.70,12.00 3.70,12.00 3.85,10.42 2.29,9.22 4.73,4.98 6.55,5.74 7.85,4.81"/><circle cx="12" cy="12" r="3.1"/></svg>'''
@@ -599,31 +599,31 @@ class Win(QMainWindow):
   split=QHBoxLayout();o.addLayout(split,1)
   side=QVBoxLayout();side.setSpacing(12);side.setAlignment(Qt.AlignTop);sidebox=QWidget();sidebox.setFixedWidth(248);sidebox.setLayout(side);split.addWidget(sidebox)
   f=QFrame();f.setObjectName("side");v=QVBoxLayout(f);self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText("IP, domain, URL, hash...");self.bt=QPushButton("ANALYZE");self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);v.addWidget(self.i);v.addWidget(self.bt);st=QLabel("Supports IP, IP:port, domain, URL and hashes");st.setWordWrap(True);st.setObjectName("muted");v.addWidget(st);side.addWidget(f)
-  hf=QFrame();hf.setObjectName("side");hv=QVBoxLayout(hf);hv.addWidget(QLabel("RECENT SEARCHES"));self.history_layout=QVBoxLayout();hv.addLayout(self.history_layout);side.addWidget(hf)
-  quick=QFrame();quick.setObjectName("side");qv=QVBoxLayout(quick);qv.addWidget(QLabel("QUICK NAVIGATION"));
+  hf=QFrame();hf.setObjectName("sideSection");hv=QVBoxLayout(hf);hv.addWidget(QLabel("RECENT SEARCHES"));self.history_layout=QVBoxLayout();hv.addLayout(self.history_layout);side.addWidget(hf)
+  quick=QFrame();quick.setObjectName("sideSection");qv=QVBoxLayout(quick);qv.addWidget(QLabel("QUICK NAVIGATION"));
   scroll=QScrollArea();scroll.setWidgetResizable(True);split.addWidget(scroll,1);page=QWidget();scroll.setWidget(page);x=QVBoxLayout(page);x.setSpacing(15);x.setContentsMargins(8,0,8,18);self.scroll=scroll
   self.jump_targets={}
   for title in ("Threat assessment","Key information","Intelligence sources","Vendor statistics","Intelligence graph","Related indicators","Raw data"):
    btn=QPushButton(title);btn.setCursor(Qt.PointingHandCursor);btn.clicked.connect(lambda checked=False,t=title:self.jump_to(t));qv.addWidget(btn)
   side.addWidget(quick)
   self.headline=QLabel("Enter an indicator to begin");self.headline.setObjectName("iocHeadline");x.addWidget(self.headline)
-  assessment=QFrame();assessment.setObjectName("card");ar=QHBoxLayout(assessment);self.assessment_text=QLabel("Threat assessment\n\nAwaiting intelligence source evidence");self.assessment_text.setWordWrap(True);ar.addWidget(self.assessment_text,1);self.vt_circle=VirusTotalGauge();ar.addWidget(self.vt_circle);x.addWidget(assessment);self.jump_targets["Threat assessment"]=assessment
+  assessment=QFrame();assessment.setObjectName("card");ar=QHBoxLayout(assessment);self.assessment_text=QLabel("THREAT ASSESSMENT\n\nEnter an IOC above to begin.\n\nIntelligence evidence will appear here after analysis.");self.assessment_text.setWordWrap(True);self.assessment_text.setStyleSheet("font-size:14px;font-weight:600;color:#99ABC2;padding:12px;background:transparent");ar.addWidget(self.assessment_text,1);self.vt_circle=VirusTotalGauge();ar.addWidget(self.vt_circle);x.addWidget(assessment);self.jump_targets["Threat assessment"]=assessment
   self.id=Card("ANALYZED INDICATOR");x.addWidget(self.id)
   self.cards=[Card(n) for n in ["Geolocation","Network / RDAP","DNS","VirusTotal","ThreatFox","URLhaus","Analysis state"]]
   self.cards[6].hide()
-  ctx_label=QLabel("Key information");ctx_label.setObjectName("section");x.addWidget(ctx_label);self.jump_targets["Key information"]=ctx_label
+  ctx_label=QLabel("KEY INFORMATION");ctx_label.setObjectName("section");x.addWidget(ctx_label);self.jump_targets["Key information"]=ctx_label
   cg=QGridLayout();cg.setSpacing(10)
   for col,idx in enumerate((0,1,2)):cg.addWidget(self.cards[idx],0,col)
   x.addLayout(cg)
-  src_label=QLabel("Intelligence sources");src_label.setObjectName("section");x.addWidget(src_label);self.jump_targets["Intelligence sources"]=src_label
+  src_label=QLabel("INTELLIGENCE SOURCES");src_label.setObjectName("section");x.addWidget(src_label);self.jump_targets["Intelligence sources"]=src_label
   sg=QGridLayout();sg.setSpacing(10)
   for col,idx in enumerate((3,4,5)):sg.addWidget(self.cards[idx],0,col)
   x.addLayout(sg)
-  stat=QFrame();stat.setObjectName("card");sv=QVBoxLayout(stat);sv.addWidget(QLabel("Vendor statistics"));stats=QHBoxLayout();self.stat_labels=[]
+  stat=QFrame();stat.setObjectName("card");sv=QVBoxLayout(stat);sv.addWidget(QLabel("VENDOR STATISTICS"));stats=QHBoxLayout();self.stat_labels=[]
   for title in ("MALICIOUS","SUSPICIOUS","HARMLESS","UNDETECTED"):
    block=QFrame();block.setObjectName("mini");bv=QVBoxLayout(block);val=QLabel("—");val.setAlignment(Qt.AlignCenter);val.setStyleSheet("font-size:24px;font-weight:800;color:#B5C5D8");lab=QLabel(title);lab.setAlignment(Qt.AlignCenter);lab.setObjectName("muted");bv.addWidget(val);bv.addWidget(lab);stats.addWidget(block);self.stat_labels.append(val)
   sv.addLayout(stats);x.addWidget(stat);self.jump_targets["Vendor statistics"]=stat
-  graph_heading=QLabel("Intelligence graph");graph_heading.setObjectName("section");x.addWidget(graph_heading);self.jump_targets["Intelligence graph"]=graph_heading
+  graph_heading=QLabel("INTELLIGENCE GRAPH");graph_heading.setObjectName("section");x.addWidget(graph_heading);self.jump_targets["Intelligence graph"]=graph_heading
   self.graph=GraphView(self.graph_analyze);self.graph.setMinimumHeight(180);self.graph.setMaximumHeight(740);x.addWidget(self.graph)
   self.graph_info=QLabel("VirusTotal relationships will appear here after analysis.");self.graph_info.setObjectName("muted");self.graph_info.setWordWrap(True);x.addWidget(self.graph_info)
   self.rel_info=QLabel("Related indicators · Waiting for analysis");self.rel_info.setObjectName("section");x.addWidget(self.rel_info);self.jump_targets["Related indicators"]=self.rel_info
@@ -632,7 +632,7 @@ class Win(QMainWindow):
   self.rel_analyze.clicked.connect(self.analyze_selected);self.rel_copy.clicked.connect(self.copy_selected);self.rel_copyall.clicked.connect(self.copy_all_related);self.rel_export.clicked.connect(self.export_related)
   for zbtn in (self.rel_analyze,self.rel_copy,self.rel_copyall,self.rel_export):rb.addWidget(zbtn)
   x.addLayout(rb)
-  raw_label=QLabel("Raw data");raw_label.setObjectName("section");x.addWidget(raw_label);self.jump_targets["Raw data"]=raw_label
+  raw_label=QLabel("RAW DATA");raw_label.setObjectName("section");x.addWidget(raw_label);self.jump_targets["Raw data"]=raw_label
   self.raw=QTextEdit();self.raw.setReadOnly(True);self.raw.setMinimumHeight(240);self.raw.setPlainText("Raw upstream evidence will appear here.");x.addWidget(self.raw)
   self.timing_info=QLabel("Source timing will appear after analysis.");self.timing_info.setObjectName("muted");x.addWidget(self.timing_info)
   self.current_ioc=None;self.current_type=None;self.related_cache=[];self.progress_dialog=None;self.timings={};QApplication.instance().setStyleSheet(DARK)
@@ -655,8 +655,8 @@ class Win(QMainWindow):
   if self.bt.isEnabled():self.i.setText(value);self.go()
  def update_visuals(self,vt,finding,headline,summary):
   self.headline.setText(self.current_ioc or "Indicator")
-  self.assessment_text.setText("Threat assessment\n\n"+headline+"\n"+summary)
-  self.assessment_text.setStyleSheet("font-size:15px;font-weight:650;color:" + ("#F6AD55" if finding else "#B7E4D8") + ";padding:12px")
+  self.assessment_text.setText("THREAT ASSESSMENT\n\n"+headline+"\n"+summary)
+  self.assessment_text.setStyleSheet("font-size:15px;font-weight:650;color:" + ("#F6AD55" if finding else "#B7E4D8") + ";padding:12px;background:transparent")
   metrics=vt_metrics(vt)
   if metrics:
    detected,total,level,*_=metrics
