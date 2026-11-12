@@ -4,6 +4,7 @@ This module intentionally contains no Qt code so IOC normalization, TLS setup,
 and diagnostics can be tested independently from the desktop UI.
 """
 from __future__ import annotations
+import sys
 
 import ipaddress
 import logging
@@ -15,7 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 APP_NAME = "CTI Workbench"
 APP_VERSION = "0.6.1-dev"
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "logs"
 LOG_FILE = LOG_DIR / "cti-workbench.log"
 

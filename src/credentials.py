@@ -1,5 +1,6 @@
 """Credential resolution for CTI Workbench; no secrets are logged."""
 from __future__ import annotations
+import sys
 
 import json
 import os
@@ -7,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SERVICE = "CTI Workbench"
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 PROVIDERS = {
     "virustotal": ("VT_API_KEY", "virustotal.json", "api_key"),
     "abusech": ("ABUSECH_AUTH_KEY", "abusech.json", "auth_key"),

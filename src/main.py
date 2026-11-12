@@ -351,7 +351,10 @@ class W(QThread):
  def __init__(self,x,t):super().__init__();self.x=x;self.t=t
  def run(self):
   timings={};overall=time.perf_counter()
-  root=Path(__file__).resolve().parent.parent; p=root/".venv"/"Scripts"/"iocinfo.exe"; exe=str(p) if p.exists() else shutil.which("iocinfo")
+  root=Path(__file__).resolve().parent.parent
+  bundled=Path(sys.executable).resolve().parent/"iocinfo.exe" if getattr(sys,"frozen",False) else None
+  p=root/".venv"/"Scripts"/"iocinfo.exe"
+  exe=str(bundled) if bundled and bundled.is_file() else (str(p) if p.is_file() else shutil.which("iocinfo"))
   e=os.environ.copy();e.update(PYTHONUTF8="1",PYTHONIOENCODING="utf-8",NO_COLOR="1",TERM="dumb")
   raw=""; code=0;ioc_started=time.perf_counter()
   if not exe:
