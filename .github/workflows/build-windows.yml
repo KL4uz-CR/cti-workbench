@@ -45,6 +45,9 @@ jobs:
       - name: Smoke test iocinfo
         shell: pwsh
         run: |
+          [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:NO_COLOR = "1"
           & .\dist\iocinfo.exe --help
           if ($LASTEXITCODE -ne 0) { throw "iocinfo smoke test failed" }
 
