@@ -2,9 +2,7 @@
 
 **Evidence-first IOC enrichment for Windows.**
 
-CTI Workbench is a Windows desktop application for enriching indicators of compromise (IOCs) and presenting source-specific evidence in an analyst-oriented interface. The stable `v0.5.8` release introduced a consolidated investigation overview and improved Intelligence Graph readability while retaining the existing evidence-first workflow.
-
-Version `0.7` packages CTI Workbench as a single portable Windows executable with embedded iocinfo, three interface languages, and evidence coverage in the assessment.
+CTI Workbench 0.7 is a Windows desktop application for enriching indicators of compromise (IOCs) and reviewing evidence from each source.
 
 ## Portable Windows build
 
@@ -26,18 +24,14 @@ Online enrichment requires internet access. API keys saved in Windows Credential
 - Dark-only Windows analyst interface.
 - Settings dialog for API credential management.
 
-## What's new in v0.5.8
+## What's new in 0.7
 
-- Consolidated, scrollable investigation overview with quick navigation and session-only recent searches.
-- Clearer presentation of the analyzed IOC, global assessment, individual intelligence sources and supporting context.
-- VirusTotal detection gauge and vendor statistics, explicitly separate from the global assessment.
-- Improved graph layout: compact radial arrangement for smaller indicator sets and two-column indicator lanes for dense graphs.
-- Unique graph nodes per indicator and type, with labels separated from nodes and relationship summaries outside the visualization.
-- Improved gauge-caption spacing and corrected the runtime issue identified during preview testing.
+- A single portable executable with embedded iocinfo and a CTI Workbench icon.
+- An interface in English, Spanish and Brazilian Portuguese.
+- Windows Credential Manager integration for VirusTotal and abuse.ch.
+- An assessment that shows source coverage and distinguishes partial results from insufficient data.
 
-The v0.5.8 interface and live API behavior were visually exercised on Windows before publication. The nine core normalization regression tests passed. These checks do not guarantee that every external API response or environment is covered.
-
-## Quick start
+## Run from source
 
 **Requirements:** Windows 10/11 and Python 3.11+ recommended.
 
@@ -112,7 +106,7 @@ VirusTotal vendor detections are displayed as VirusTotal-specific evidence, not 
 
 Related indicators show relationships, not automatic malicious verdicts.
 
-Unavailable data, authentication failures, rate limits, and malformed responses must not be interpreted as evidence that an indicator is safe.
+The assessment shows how many of the three intelligence sources evaluated the indicator. It reports insufficient data when none could evaluate it and partial coverage when only some could. A confirmed finding remains visible with partial coverage.
 
 ## Analyst workflow
 
@@ -159,30 +153,9 @@ cti-workbench/
 - **v0.5.6:** Strict IP/IP:port validation, separation of core IOC/TLS/logging helpers from the UI, defensive VirusTotal relationship handling, rotating diagnostics, `iocinfo` timeout reporting and normalization regression tests.
 - **v0.5.5:** Initial private GitHub release.
 
-## Repository status
-
-- **Version on `develop`:** `v0.7`.
-- **Previous stable baseline:** `v0.5.8`.
-
-This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
-
-## v0.6.1-dev — Secure credentials and CTI source validation
-
-The Settings dialog allows users to manage VirusTotal and abuse.ch credentials through Windows Credential Manager.
-
-ThreatFox response handling distinguishes explicit no-result responses from authentication errors and invalid response structures.
-
-URLhaus response handling validates response status and data structures before reporting an indicator as found. Empty host results, invalid URL collections, and incomplete hash responses are handled defensively.
-
-IOCinfo execution logging avoids recording the complete IOC in routine analysis logs. Execution errors no longer expose exception details directly to the user.
-
-The Settings dialog also prevents stale connection-test results from overwriting newer status information after credential changes and includes QThread lifecycle management for connection tests.
-
-**Automated validation:** 38 tests passed, covering IOC normalization, credential resolution and validation, and ThreatFox and URLhaus response handling. The tests do not constitute exhaustive validation of every UI workflow or external API response.
-
-See [`docs/SETUP.md`](docs/SETUP.md) for setup instructions and [`docs/SECURITY.md`](docs/SECURITY.md) for security guidance.
-
 ## Development and testing
+
+The 0.7 test suite includes 48 automated tests for normalization, credentials, enrichment, provider response handling and assessment coverage.
 
 Development takes place on the `develop` branch. The `main` branch represents the stable release line.
 
@@ -218,13 +191,3 @@ Do not modify historical release tags or rewrite published Git history.
 - Do not interpret source errors or unavailable information as clean intelligence results.
 - Do not upload files automatically to VirusTotal.
 - Do not invent detection counts, malware classifications, relationships, or confidence values.
-
-## Project status
-
-CTI Workbench is a personal technical development project focused on evidence-based IOC enrichment and practical SOC/CTI investigation workflows.
-
-Version 0.7 brings the changes developed during the 0.6 cycle together.
-
-No claim is made that the application is signed, packaged as a production-ready executable, or deployed as a production service.
-
-The repository remains private unless its owner explicitly authorizes a change in visibility or licensing.
