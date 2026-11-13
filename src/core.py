@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 APP_NAME = "CTI Workbench"
-APP_VERSION = "0.6.1-dev"
+APP_VERSION = "0.7"
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "logs"
 LOG_FILE = LOG_DIR / "cti-workbench.log"

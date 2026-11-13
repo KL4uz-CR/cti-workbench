@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-Write-Host "CTI Workbench v0.6.1-dev - Setup" -ForegroundColor Cyan
+Write-Host "CTI Workbench v0.7 - Setup" -ForegroundColor Cyan
 
 if (-not (Get-Command py -ErrorAction SilentlyContinue) -and -not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Host "Python 3 is required. Install Python for Windows, then run this script again." -ForegroundColor Red

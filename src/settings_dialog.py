@@ -7,10 +7,11 @@ import urllib.request
 
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QLineEdit,
+    QComboBox, QDialog, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QLineEdit,
     QPushButton, QMessageBox, QWidget,
 )
 
+from localization import LANGUAGES, save_language, selected_language, tr
 from core import APP_VERSION, tls_context
 from credentials import CredentialStoreError, resolve, save, delete
 
@@ -66,33 +67,33 @@ class ConnectionWorker(QThread):
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Settings — CTI Workbench")
+        self.setWindowTitle(tr("Settings")+" — CTI Workbench")
         self.setMinimumWidth(510)
         self._workers = {}
         self._test_revisions = {}
         self._controls = {}
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("API credentials are stored in Windows Credential Manager."))
-        layout.addWidget(QLabel("Existing credentials are never shown or changed automatically."))
+        layout.addWidget(QLabel(tr("API credentials are stored in Windows Credential Manager.")))
+        layout.addWidget(QLabel(tr("Existing credentials are never shown or changed automatically.")))
         for provider, title in (("virustotal", "VirusTotal"), ("abusech", "abuse.ch (ThreatFox / URLhaus)")):
             group = QGroupBox(title)
             form = QVBoxLayout(group)
-            source = QLabel("Credential source: checking...")
+            source = QLabel(tr("Credential source: checking..."))
             form.addWidget(source)
             entry_row = QHBoxLayout()
             field = QLineEdit()
             field.setEchoMode(QLineEdit.Password)
-            field.setPlaceholderText("Enter a new key (leave blank to keep current)")
+            field.setPlaceholderText(tr("Enter a new key (leave blank to keep current)"))
             entry_row.addWidget(field)
-            show = QPushButton("Show")
+            show = QPushButton(tr("Show"))
             show.setCheckable(True)
             show.toggled.connect(lambda checked, f=field, b=show: self._toggle(f, b, checked))
             entry_row.addWidget(show)
             form.addLayout(entry_row)
             buttons = QHBoxLayout()
-            test = QPushButton("Test Connection")
-            store = QPushButton("Save")
-            remove = QPushButton("Remove")
+            test = QPushButton(tr("Test Connection"))
+            store = QPushButton(tr("Save"))
+            remove = QPushButton(tr("Remove"))
             test.setObjectName("testButton")
             store.setObjectName("saveButton")
             remove.setObjectName("removeButton")
@@ -101,7 +102,7 @@ class SettingsDialog(QDialog):
                 "border:1px solid #1D8A7B;font-weight:750}"
                 "QPushButton#saveButton:hover{background:#187468}"
             )
-            remove.setToolTip("Remove the stored credential")
+            remove.setToolTip(tr("Remove the stored credential"))
             remove.setStyleSheet(
                 "QPushButton#removeButton{background:#3B2D20;color:#F6C98B;"
                 "border:1px solid #80603A;font-weight:600}"
@@ -111,7 +112,7 @@ class SettingsDialog(QDialog):
             for button in (test, store, remove):
                 buttons.addWidget(button)
             form.addLayout(buttons)
-            status = QLabel("Not tested")
+            status = QLabel(tr("Not tested"))
             form.addWidget(status)
             self._controls[provider] = (source, field, test, store, remove, status)
             field.textChanged.connect(
@@ -121,19 +122,39 @@ class SettingsDialog(QDialog):
             store.clicked.connect(lambda checked=False, p=provider: self._save(p))
             remove.clicked.connect(lambda checked=False, p=provider: self._remove(p))
             layout.addWidget(group)
-        close = QPushButton("Close")
+        language_row = QHBoxLayout()
+        language_label = QLabel(tr("Language"))
+        language = QComboBox()
+        language_label.setBuddy(language)
+        for code, name in LANGUAGES.items():
+            language.addItem(name, code)
+        language.setCurrentIndex(language.findData(selected_language()))
+        language.activated.connect(lambda index: self._save_language(language.itemData(index)))
+        language_row.addWidget(language_label)
+        language_row.addWidget(language, 1)
+        layout.addLayout(language_row)
+
+        close = QPushButton(tr("Close"))
         close.clicked.connect(self.close)
         layout.addWidget(close)
         self._refresh_all()
 
+    def _save_language(self, language):
+        if language == selected_language():
+            return
+        if save_language(language):
+            QMessageBox.information(self, tr("Language"), tr("Language saved. Restart CTI Workbench to apply the change."))
+        else:
+            QMessageBox.warning(self, tr("Language"), tr("Could not save the language preference."))
+
     @staticmethod
     def _toggle(field, button, checked):
         field.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
-        button.setText("Hide" if checked else "Show")
+        button.setText(tr("Hide") if checked else tr("Show"))
 
     def _invalidate_test(self, provider):
         self._test_revisions[provider] = self._test_revisions.get(provider, 0) + 1
-        self._controls[provider][5].setText("Not tested")
+        self._controls[provider][5].setText(tr("Not tested"))
 
     def _refresh_all(self):
         for provider in self._controls:
@@ -143,52 +164,52 @@ class SettingsDialog(QDialog):
         label = self._controls[provider][0]
         try:
             credential = resolve(provider)
-            label.setText("Credential source: " + credential.source)
+            label.setText(tr("Credential source: ") + tr(credential.source))
         except CredentialStoreError:
-            label.setText("Windows Credential Manager unavailable. Check its availability and try again.")
+            label.setText(tr("Windows Credential Manager unavailable. Check its availability and try again."))
 
     def _save(self, provider):
         source, field, *_ = self._controls[provider]
         value = field.text().strip()
         if not value:
-            QMessageBox.information(self, "No changes", "Enter a new key to save.")
+            QMessageBox.information(self, tr("No changes"), tr("Enter a new key to save."))
             return
         try:
             save(provider, value)
         except (CredentialStoreError, ValueError) as error:
-            QMessageBox.warning(self, "Save failed", str(error))
+            QMessageBox.warning(self, tr("Save failed"), tr(str(error)))
             return
         field.clear()
         self._invalidate_test(provider)
         self._refresh(provider)
-        if source.text().endswith("Environment"):
-            QMessageBox.information(self, "Saved", "Saved to Windows Credential Manager. The environment variable still takes priority.")
+        if source.text().endswith(tr("Environment")):
+            QMessageBox.information(self, tr("Saved"), tr("Saved to Windows Credential Manager. The environment variable still takes priority."))
         else:
-            QMessageBox.information(self, "Saved", "Credential saved to Windows Credential Manager.")
+            QMessageBox.information(self, tr("Saved"), tr("Credential saved to Windows Credential Manager."))
 
     def _remove(self, provider):
         try:
             before = resolve(provider)
         except CredentialStoreError:
-            QMessageBox.warning(self, "Store unavailable", "Cannot verify Windows Credential Manager.")
+            QMessageBox.warning(self, tr("Store unavailable"), tr("Cannot verify Windows Credential Manager."))
             return
         message = "Remove the saved Windows Credential Manager credential?"
         if before.source == "Windows Credential Manager":
             # A fallback may become active; warn explicitly before removal.
-            message += "\n\nWarning: an existing legacy JSON credential may become active after removal. JSON files will not be changed."
+            message += "\n\n" + tr("Warning: an existing legacy JSON credential may become active after removal. JSON files will not be changed.")
         else:
-            message += "\n\nEnvironment variables and legacy JSON files will not be changed."
-        if QMessageBox.question(self, "Confirm removal", message, QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            message += "\n\n" + tr("Environment variables and legacy JSON files will not be changed.")
+        if QMessageBox.question(self, tr("Confirm removal"), message, QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
             return
         try:
             removed = delete(provider)
         except CredentialStoreError as error:
-            QMessageBox.warning(self, "Removal failed", str(error))
+            QMessageBox.warning(self, tr("Removal failed"), tr(str(error)))
             return
         self._controls[provider][1].clear()
         self._invalidate_test(provider)
         self._refresh(provider)
-        QMessageBox.information(self, "Removal", "Credential removed." if removed else "No stored credential was found.")
+        QMessageBox.information(self, tr("Removal"), tr("Credential removed.") if removed else tr("No stored credential was found."))
 
     def _test(self, provider):
         source, field, test, *_rest = self._controls[provider]
@@ -200,16 +221,16 @@ class SettingsDialog(QDialog):
             try:
                 key = resolve(provider).value
             except CredentialStoreError:
-                status.setText("Cannot access secure credential store")
+                status.setText(tr("Cannot access secure credential store"))
                 return
         if not key:
-            status.setText("No credential available")
+            status.setText(tr("No credential available"))
             return
         revision = self._test_revisions.get(provider, 0)
         worker = ConnectionWorker(provider, key)
         self._workers[provider] = worker
         test.setEnabled(False)
-        status.setText("Testing connection...")
+        status.setText(tr("Testing connection..."))
         worker.finished_test.connect(
             lambda p, result, r=revision: self._test_done(p, result, r)
         )
@@ -231,7 +252,7 @@ class SettingsDialog(QDialog):
 
     def closeEvent(self, event):
         if self._workers:
-            QMessageBox.information(self, "Connection test running", "Wait for the connection test to finish before closing Settings.")
+            QMessageBox.information(self, tr("Connection test running"), tr("Wait for the connection test to finish before closing Settings."))
             event.ignore()
             return
         super().closeEvent(event)

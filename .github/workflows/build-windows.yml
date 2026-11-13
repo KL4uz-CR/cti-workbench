@@ -32,41 +32,32 @@ jobs:
 
       - name: Validate Python sources
         run: |
-          python -m compileall -q src packaging
+          python -m compileall -q src
 
       - name: Run unit tests
         run: |
           python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: Build CTI Workbench
-        run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name CTI-Workbench --paths src --collect-all keyring src/main.py
-
-      - name: Build iocinfo
-        run: |
-          python -m PyInstaller --noconfirm --clean --onefile --console --name iocinfo packaging/iocinfo_entry.py
-
-      - name: Smoke test iocinfo
         shell: pwsh
         run: |
-          [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-          $env:PYTHONIOENCODING = "utf-8"
-          $env:NO_COLOR = "1"
-          & .\dist\iocinfo.exe --help
-          if ($LASTEXITCODE -ne 0) { throw "iocinfo smoke test failed" }
+          python -m PyInstaller --noconfirm --clean packaging/CTI-Workbench.spec
 
-      - name: Prepare distribution
+      - name: Smoke test the portable executable
+        timeout-minutes: 5
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path release/config | Out-Null
-          Copy-Item dist/CTI-Workbench.exe release/
-          Copy-Item dist/iocinfo.exe release/
-          Copy-Item config/*.example release/config/
+          $directory = New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP "cti-portable")
+          $executable = Copy-Item dist/CTI-Workbench.exe $directory -PassThru
+          foreach ($language in @("en", "es", "pt_BR")) {
+            $process = Start-Process -FilePath $executable.FullName -ArgumentList "--smoke-test", $language -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Portable smoke test failed for $language" }
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: CTI-Workbench-dev-win-x64
-          path: release/
+          path: dist/CTI-Workbench.exe
           if-no-files-found: error
           retention-days: 30

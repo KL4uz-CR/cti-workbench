@@ -1,11 +1,13 @@
-import sys,re,subprocess,shutil,os,json,base64,urllib.request,urllib.error,urllib.parse,time,math
-from pathlib import Path
+import sys,re,json,base64,urllib.request,urllib.error,urllib.parse,time,math
 from PySide6.QtCore import QSize,QThread,Signal,Qt,QPointF,QPoint,QPropertyAnimation,QEasingCurve,Property
 from PySide6.QtWidgets import *
 from PySide6.QtGui import QPen,QBrush,QColor,QPainter,QFont,QPainterPath,QKeySequence,QShortcut,QRadialGradient,QIcon,QPixmap
 from core import normalize_ioc, safe_dict, tls_context, get_logger, APP_VERSION
 from credentials import resolve, CredentialStoreError
 from settings_dialog import SettingsDialog
+from enrichment import enrich
+from branding import app_icon
+from localization import tr, initialize_language
 APP="CTI Workbench"; VERSION=APP_VERSION
 logger=get_logger()
 DARK="""QWidget{background:#0B1026;color:#E8EDF8;font-family:'Segoe UI';font-size:13px}QFrame#card,QFrame#mini{background:#151F36;border:1px solid #273651;border-radius:14px}QFrame#card:hover,QFrame#mini:hover{border:1px solid #126C90}QLineEdit{background:#17243C;border:1px solid #2B405A;border-radius:9px;padding:11px;color:#F8FAFC}QLineEdit:focus{border:1px solid #00BCE5}QPushButton{background:#103149;color:#DCEFFF;border:1px solid #165674;border-radius:9px;padding:10px 15px;font-weight:700}QPushButton:hover{background:#154965;border:1px solid #00C7F3;color:#FFFFFF}QPushButton:disabled{background:#182338;color:#6F8398}QTextEdit,QTableWidget{background:#121B30;color:#F8FAFC;border:1px solid #2B3954;border-radius:9px;padding:7px}QHeaderView::section{background:#1B2740;color:#B9C9DD;border:0;padding:9px}QLabel#title{color:#00C9F3;font-size:21px;font-weight:750}QLabel#section{color:#DAE5F6;font-weight:750}QLabel#muted{color:#99ABC2}QScrollArea{border:0;background:#0B1026}QToolTip{background:#1B2740;color:white;border:1px solid #00C9F3}QScrollBar:vertical{background:#0B1026;width:10px}QScrollBar::handle:vertical{background:#314561;border-radius:5px}QTabWidget::pane{border:0}QTabBar::tab{background:#17233A;color:#B3C4D8;padding:10px;border:1px solid #2A3C54;border-radius:8px}QTabBar::tab:selected{background:#12425C;color:#00D0FA}QFrame#side{background:#111A30;border:1px solid #2B3954;border-radius:14px}QFrame#sideSection{background:transparent;border:0}QFrame#sideSection QLabel{background:transparent;color:#DAE5F6;font-size:12px;font-weight:750}QLabel#iocHeadline{font-size:27px;font-weight:800;color:white}QLabel#circle{font-size:28px;font-weight:800;color:white;background:#10B981;border-radius:64px}QLabel#circle[severity="warning"]{background:#F59E0B}QLabel#circle[severity="danger"]{background:#EF4444}QLabel#circle[severity="unknown"]{background:#475569}"""
@@ -22,78 +24,11 @@ def settings_icon():
 def typ(v):
  return normalize_ioc(v)[2]
 
-def whois_state(data,text):
- fields=("Registrar","Registered","Expires","Last Changed","Nameservers","Status")
- if any(data.get(k,"—") not in ("—","") for k in fields): return "Available"
- # Only call it a lookup failure when the upstream output associates an error
- # with WHOIS/RDAP. Generic ThreatFox/URLhaus warnings must not affect WHOIS.
- for line in text.splitlines():
-  if re.search(r"whois|rdap",line,re.I) and re.search(r"error|failed|timeout|unavailable|refused|certificate",line,re.I):
-   return "Lookup failed"
- return "No data"
-
-def fld(t,n):
- # Rich surrounds table rows with Unicode box-drawing characters (e.g. │).
- # Parse line-by-line, strip those borders, then split the requested label/value.
- for line in t.splitlines():
-  line=line.strip().strip("│┃║").strip()
-  m=re.match(rf"^{re.escape(n)}(?:/ASN)?\s+(.+?)\s*$",line,re.I)
-  if m:
-   return m.group(1).strip().strip("│┃║").strip()
- return "—"
-
-def domain_data(t):
- # Parse iocinfo domain DNS/WHOIS tables. Continuation lines are appended
- # to the preceding multi-value field (NS, TXT, Nameservers, Status).
- keys=["A Records","MX Records","NS Records","TXT Records","Registrar",
-       "Registered","Expires","Last Changed","Nameservers","Status"]
- data={k:"—" for k in keys}
- current=None
- for raw in t.splitlines():
-  line=raw.strip().strip("│┃║").strip()
-  if not line: continue
-  found=False
-  for k in keys:
-   m=re.match(rf"^{re.escape(k)}\s+(.+?)\s*$",line,re.I)
-   if m:
-    data[k]=m.group(1).strip().strip("│┃║").strip()
-    current=k
-    found=True
-    break
-  if found: continue
-  # Rich wraps long values onto continuation rows.
-  if current in ("NS Records","TXT Records","Nameservers","Status"):
-   # Never let provider warnings/errors bleed into wrapped DNS/WHOIS fields.
-   boundary=bool(re.match(r"^[╭╰┌└├┬┴─━═]+",line) or re.search(r"(DNS Records|WHOIS|ThreatFox|URLhaus)",line,re.I))
-   errorline=bool(re.search(r"(HTTP\s+\d{3}|unauthorized|forbidden|urlopen error|certificate[_ ]verify[_ ]failed|unable to get local issuer|\bfailed:|\berror:)",line,re.I))
-   if not boundary and not errorline:
-    data[current]=(data[current]+" "+line).strip()
- return data
-
-def source_state(text,name):
- m=re.search(rf"(?mi){re.escape(name)}:\s*(.+)$",text)
- if not m: return "No data reported", False
- v=m.group(1).strip()
- if re.search(r"401|unauthorized",v,re.I): return "Authentication required", True
- if re.search(r"403|forbidden",v,re.I): return "Access forbidden", True
- if re.search(r"certificate|ssl|tls",v,re.I): return "TLS certificate validation failed", True
- if re.search(r"urlopen error|connection|timeout",v,re.I): return "Source unavailable", True
- if re.search(r"\b(error|failed)\b",v,re.I): return "Source error", True
- return v,False
-
 def url_host(v):
  from urllib.parse import urlsplit
  try: return urlsplit(v).hostname or "—"
  except Exception: return "—"
 
-def url_data(t):
- # iocinfo normalizes URLs to a host and may return DNS A records.
- host="—"; ips="—"
- m=re.search(r"(?mi)^\s*hxxps?://\S+\s+\(url\s*→\s*([^\)]+)\)",t)
- if m: host=m.group(1).strip()
- a=fld(t,"A Records")
- if a!="—": ips=a
- return host,ips
 def vt_api_key():
  return resolve("virustotal").value
 
@@ -111,10 +46,12 @@ def vt_lookup(ioc_type,value):
  else: return {"status":"Unsupported IOC type"}
  req=urllib.request.Request("https://www.virustotal.com/api/v3/"+endpoint,headers={"x-apikey":key,"Accept":"application/json","User-Agent":f"CTI-Workbench/{APP_VERSION}"})
  try:
-  with urllib.request.urlopen(req,timeout=20) as r: payload=json.loads(r.read().decode("utf-8","replace"))
+  with urllib.request.urlopen(req,timeout=20,context=tls_context()) as r: payload=json.loads(r.read().decode("utf-8","replace"))
   data=safe_dict(payload.get("data",{}))
   attrs=safe_dict(data.get("attributes",{}))
   stats=safe_dict(attrs.get("last_analysis_stats",{}))
+  if not all(type(stats.get(key)) is int and stats[key] >= 0 for key in ("malicious", "suspicious", "harmless", "undetected")) or not sum(stats[key] for key in ("malicious", "suspicious", "harmless", "undetected")):
+   return {"status":"No data"}
   return {"status":"Available","malicious":stats.get("malicious",0),"suspicious":stats.get("suspicious",0),"harmless":stats.get("harmless",0),"undetected":stats.get("undetected",0),"reputation":attrs.get("reputation","—"),"last_analysis_date":attrs.get("last_analysis_date"),"categories":attrs.get("categories",{})}
  except urllib.error.HTTPError as e:
   if e.code==404:return {"status":"No existing report"}
@@ -137,15 +74,15 @@ def vt_metrics(v):
 
 def vt_text(v):
  m=vt_metrics(v)
- if not m: return v.get("status","No data")
+ if not m: return tr(v.get("status","No data"))
  detected,total,level,mal,sus,harmless,und=m
- label={"clear":"NO DETECTIONS","review":"REVIEW RECOMMENDED","warning":"MULTIPLE DETECTIONS"}[level]
+ label=tr({"clear":"NO DETECTIONS","review":"REVIEW RECOMMENDED","warning":"MULTIPLE DETECTIONS"}[level])
  icon={"clear":"✓","review":"⚠","warning":"⚠"}[level]
  return (f"{icon}  {detected} / {total}  —  {label}\n"
-         f"Vendor detections\n\n"
-         f"Malicious: {mal} · Suspicious: {sus}\n"
-         f"Harmless: {harmless} · Undetected: {und}\n"
-         f"Community reputation: {v.get('reputation','—')}")
+         f"{tr('Vendor detections')}\n\n"
+         f"{tr('Malicious')}: {mal} · {tr('Suspicious')}: {sus}\n"
+         f"{tr('Harmless')}: {harmless} · {tr('Undetected')}: {und}\n"
+         f"{tr('Community reputation')}: {v.get('reputation','—')}")
 
 def vt_object_path(ioc_type,value):
  if ioc_type=="Domain": return "domains/"+value
@@ -242,6 +179,8 @@ def post_json(url,data,key,timeout=20):
    raise RuntimeError(f"ThreatFox returned a non-JSON response (HTTP {getattr(r,'status','?')}, Content-Type: {ctype or 'unknown'})")
 
 def threatfox_lookup(ioc_type,value):
+ if ioc_type == "Hash" and len(value) not in (32, 64):
+  return {"status": "Unsupported hash type"}
  try: key=abusech_api_key()
  except CredentialStoreError: return {"status":"Credential store unavailable"}
  if not key:return {"status":"Not configured"}
@@ -269,6 +208,8 @@ def threatfox_lookup(ioc_type,value):
   return {"status":"Source error","detail":"Request failed; check connection and configuration"}
 
 def urlhaus_lookup(ioc_type,value):
+ if ioc_type == "Hash" and len(value) not in (32, 64):
+  return {"status": "Unsupported hash type"}
  try: key=abusech_api_key()
  except CredentialStoreError: return {"status":"Credential store unavailable"}
  if not key:return {"status":"Not configured"}
@@ -332,50 +273,33 @@ def urlhaus_lookup(ioc_type,value):
   return {"status":"Source unavailable","detail":"Request failed; check connection and configuration"}
 
 def tf_text(v):
- if v.get("status")!="IOC FOUND":return v.get("status","No data")
- return (f"⚠ IOC FOUND · {v.get('count',1)} match(es)\n"
-         f"Malware: {v.get('malware','—')}\nThreat: {v.get('threat','—')}\n"
-         f"Confidence: {v.get('confidence','—')}%\nFirst seen: {v.get('first_seen','—')}\nLast seen: {v.get('last_seen','—')}")
+ if v.get("status")!="IOC FOUND":return tr(v.get("status","No data"))
+ return (f"⚠ {tr('IOC FOUND')} · {tr('{count} match(es)', count=v.get('count',1))}\n"
+         f"{tr('Malware')}: {v.get('malware','—')}\n{tr('Threat')}: {v.get('threat','—')}\n"
+         f"{tr('Confidence')}: {v.get('confidence','—')}%\n{tr('First seen')}: {v.get('first_seen','—')}\n{tr('Last seen')}: {v.get('last_seen','—')}")
 
 def uh_text(v):
- if v.get("status")!="IOC FOUND":return v.get("status","No data")
+ if v.get("status")!="IOC FOUND":return tr(v.get("status","No data"))
  tags=v.get("tags") or []
  if isinstance(tags,list): tags=", ".join(map(str,tags)) or "—"
- return (f"⚠ IOC FOUND · {v.get('count',1)} match(es)\n"
-         f"Status: {v.get('url_status','—')}\nThreat: {v.get('threat','—')}\n"
-         f"Tags: {tags}\nDate added: {v.get('date_added','—')}")
+ return (f"⚠ {tr('IOC FOUND')} · {tr('{count} match(es)', count=v.get('count',1))}\n"
+         f"{tr('Status')}: {v.get('url_status','—')}\n{tr('Threat')}: {v.get('threat','—')}\n"
+         f"{tr('Tags')}: {tags}\n{tr('Date added')}: {v.get('date_added','—')}")
 
 class W(QThread):
- done=Signal(str,int,object,object,object,object)
+ done=Signal(object,int,object,object,object,object)
  progress=Signal(int,str)
  def __init__(self,x,t):super().__init__();self.x=x;self.t=t
  def run(self):
   timings={};overall=time.perf_counter()
-  root=Path(__file__).resolve().parent.parent
-  bundled=Path(sys.executable).resolve().parent/"iocinfo.exe" if getattr(sys,"frozen",False) else None
-  p=root/".venv"/"Scripts"/"iocinfo.exe"
-  exe=str(bundled) if bundled and bundled.is_file() else (str(p) if p.is_file() else shutil.which("iocinfo"))
-  e=os.environ.copy();e.update(PYTHONUTF8="1",PYTHONIOENCODING="utf-8",NO_COLOR="1",TERM="dumb")
-  raw=""; code=0;ioc_started=time.perf_counter()
-  if not exe:
-   raw=f"iocinfo not found.\nChecked: {p}"; code=127
-   logger.error("iocinfo executable not found; checked %s",p)
-  elif not Path(exe).is_file():
-   raw=f"iocinfo path is not a file: {exe}"; code=127
-   logger.error("iocinfo path is not a file: %s",exe)
-  else:
-   try:
-    logger.info("Analysis started: type=%s",self.t)
-    q=subprocess.run([exe,self.x],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90,env=e,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
-    raw=((q.stdout or "")+("\n"+q.stderr if q.stderr else "")).strip(); code=q.returncode
-    logger.info("iocinfo completed: returncode=%s",code)
-   except subprocess.TimeoutExpired:
-    raw="iocinfo timed out after 90 seconds"; code=124
-    logger.warning("iocinfo timed out after 90 seconds")
-   except Exception:
-    raw="iocinfo execution failed; check installation and configuration"
-    code=1
-    logger.error("iocinfo execution failed")
+  ioc_started=time.perf_counter()
+  code=0
+  try:
+   evidence=enrich(self.x,self.t)
+  except Exception:
+   evidence={}
+   code=1
+   logger.warning("Embedded iocinfo enrichment failed for %s",self.t)
   timings["DNS / WHOIS"]=time.perf_counter()-ioc_started
   self.progress.emit(2,"Querying VirusTotal")
   started=time.perf_counter();vt=vt_lookup(self.t,self.x);timings["VirusTotal"]=time.perf_counter()-started
@@ -385,10 +309,10 @@ class W(QThread):
   started=time.perf_counter();uh=urlhaus_lookup(self.t,self.x);timings["URLhaus"]=time.perf_counter()-started
   timings["Initial pipeline"]=time.perf_counter()-overall
   self.progress.emit(5,"Discovering related indicators")
-  self.done.emit(raw,code,vt,tf,uh,timings)
+  self.done.emit(evidence,code,vt,tf,uh,timings)
 class Card(QFrame):
  def __init__(self,n):
-  super().__init__();self.setObjectName("mini");v=QVBoxLayout(self);self.h=QLabel(n.upper());self.h.setObjectName("section");v.addWidget(self.h);self.b=QLabel("Waiting for analysis");self.b.setWordWrap(True);v.addWidget(self.b);v.addStretch(0)
+  super().__init__();self.setObjectName("mini");v=QVBoxLayout(self);self.h=QLabel(tr(n).upper());self.h.setObjectName("section");v.addWidget(self.h);self.b=QLabel(tr("Waiting for analysis"));self.b.setWordWrap(True);v.addWidget(self.b);v.addStretch(0)
  def set(self,x):self.b.setText(x)
  def reset_visual(self):
   self.setStyleSheet("");self.b.setStyleSheet("");self.h.setStyleSheet("")
@@ -426,7 +350,7 @@ class Card(QFrame):
    self.setStyleSheet(f"QFrame#mini{{background:{bg};border:2px solid {accent};border-radius:10px}}")
    self.h.setStyleSheet(f"color:{accent};font-weight:800"); self.b.setStyleSheet(f"color:{fg};font-weight:650")
  def set_analysis(self,text,finding,dark=True):
-  self.reset_visual(); self.h.setText("ANALYSIS STATE"); self.b.setText(text)
+  self.reset_visual(); self.h.setText(tr("Analysis state").upper()); self.b.setText(text)
   accent="#EF4444" if finding else "#22C55E"
   bg=("#450A0A" if dark else "#FEE2E2") if finding else ("#052E16" if dark else "#DCFCE7")
   fg="#F8FAFC" if dark else "#0F172A"
@@ -539,19 +463,20 @@ class GraphView(QGraphicsView):
 class AnalysisProgress(QDialog):
  STAGES=["DNS / WHOIS enrichment","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph","Complete"]
  def __init__(self,parent,ioc):
-  super().__init__(parent);self.setWindowTitle("Analysis Progress");self.setModal(True);self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);self.setFixedWidth(500)
+  super().__init__(parent);self.setWindowTitle(tr("Analysis Progress"));self.setModal(True);self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);self.setFixedWidth(500)
   self.setStyleSheet("QDialog{background:#0B1220;border:1px solid #334155} QLabel{background:transparent;color:#F8FAFC}")
   v=QVBoxLayout(self);v.setContentsMargins(28,24,28,24);v.setSpacing(9)
-  self.title=QLabel("ANALYZING IOC");self.title.setAlignment(Qt.AlignCenter);self.title.setStyleSheet("font-size:18px;font-weight:800;letter-spacing:1px;color:#F8FAFC");v.addWidget(self.title)
+  self.title=QLabel(tr("ANALYZING IOC"));self.title.setAlignment(Qt.AlignCenter);self.title.setStyleSheet("font-size:18px;font-weight:800;letter-spacing:1px;color:#F8FAFC");v.addWidget(self.title)
   self.ioc=QLabel(ioc);self.ioc.setAlignment(Qt.AlignCenter);self.ioc.setWordWrap(True);self.ioc.setStyleSheet("color:#94A3B8;margin-bottom:8px");v.addWidget(self.ioc)
   self.rows=[]
   for name in self.STAGES:
    row=QLabel(f"○  {name}");row.setStyleSheet("color:#64748B;font-size:14px;padding:2px 8px");v.addWidget(row);self.rows.append(row)
-  self.stage=QLabel("Starting analysis…");self.stage.setAlignment(Qt.AlignCenter);self.stage.setStyleSheet("color:#7DD3FC;font-weight:650;margin-top:8px");v.addWidget(self.stage)
+  self.stage=QLabel(tr("Starting analysis…"));self.stage.setAlignment(Qt.AlignCenter);self.stage.setStyleSheet("color:#7DD3FC;font-weight:650;margin-top:8px");v.addWidget(self.stage)
   self.completed=0;self.update_stage(1,"Resolving DNS / WHOIS enrichment")
  def update_stage(self,completed,current):
-  completed=max(1,min(7,int(completed)));self.completed=completed;self.stage.setText(current)
+  completed=max(1,min(7,int(completed)));self.completed=completed;self.stage.setText(tr(current))
   for idx,(name,row) in enumerate(zip(self.STAGES,self.rows),start=1):
+   name=tr(name)
    if completed>=7 or idx<completed:
     row.setText(f"✓  {name}");row.setStyleSheet("color:#22C55E;font-size:14px;font-weight:650;padding:2px 8px")
    elif idx==completed:
@@ -591,58 +516,58 @@ class VirusTotalGauge(QWidget):
   p.drawText(0,49,rect.width(),49,Qt.AlignHCenter|Qt.AlignVCenter,f"{self.detected}/{self.total}" if self.total else "N/A")
   f.setPointSize(8);f.setBold(True);p.setFont(f);p.setPen(QColor('#B9C9DD'))
   p.drawText(0,99,rect.width(),20,Qt.AlignCenter,"VIRUSTOTAL DETECTIONS")
-  p.setPen(color);p.drawText(0,174,rect.width(),20,Qt.AlignCenter,{"clear":"NO DETECTIONS","review":"REVIEW RECOMMENDED","warning":"MULTIPLE DETECTIONS"}.get(self.level,"NO REPORT"))
+  p.setPen(color);p.drawText(0,174,rect.width(),20,Qt.AlignCenter,tr({"clear":"NO DETECTIONS","review":"REVIEW RECOMMENDED","warning":"MULTIPLE DETECTIONS"}.get(self.level,"NO REPORT")))
   p.end()
 
 class Win(QMainWindow):
  def __init__(self):
   super().__init__();self.setWindowTitle(f"{APP} v{VERSION}");self.resize(1120,760);c=QWidget();self.setCentralWidget(c);o=QVBoxLayout(c)
   self.history=[]
-  top=QHBoxLayout();a=QLabel("◎  CTI Workbench");a.setObjectName("title");top.addWidget(a);top.addStretch();self.settings_button=QPushButton("Settings");self.settings_button.setObjectName("settingsButton");self.settings_button.setToolTip("Settings");self.settings_button.setFixedSize(132,40);self.settings_button.setIcon(settings_icon());self.settings_button.setIconSize(QSize(26,26));self.settings_button.setStyleSheet("QPushButton#settingsButton{padding:0 12px;background:#103149;color:#FFFFFF;border:1px solid #165674;border-radius:9px;font-weight:700;font-size:14px;text-align:center}QPushButton#settingsButton:hover{background:#154965;border-color:#00C7F3}");self.settings_button.clicked.connect(self.open_settings);top.addWidget(self.settings_button);o.addLayout(top)
+  top=QHBoxLayout();mark=QLabel();mark.setPixmap(app_icon().pixmap(30,30));top.addWidget(mark);a=QLabel(APP);a.setObjectName("title");top.addWidget(a);top.addStretch();self.settings_button=QPushButton(tr("Settings"));self.settings_button.setObjectName("settingsButton");self.settings_button.setToolTip(tr("Settings"));self.settings_button.setMinimumSize(132,40);self.settings_button.setIcon(settings_icon());self.settings_button.setIconSize(QSize(26,26));self.settings_button.setStyleSheet("QPushButton#settingsButton{padding:0 12px;background:#103149;color:#FFFFFF;border:1px solid #165674;border-radius:9px;font-weight:700;font-size:14px;text-align:center}QPushButton#settingsButton:hover{background:#154965;border-color:#00C7F3}");self.settings_button.clicked.connect(self.open_settings);top.addWidget(self.settings_button);o.addLayout(top)
   split=QHBoxLayout();o.addLayout(split,1)
   side=QVBoxLayout();side.setSpacing(12);side.setAlignment(Qt.AlignTop);sidebox=QWidget();sidebox.setFixedWidth(248);sidebox.setLayout(side);split.addWidget(sidebox)
-  f=QFrame();f.setObjectName("side");v=QVBoxLayout(f);self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText("IP, domain, URL, hash...");self.bt=QPushButton("ANALYZE");self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);v.addWidget(self.i);v.addWidget(self.bt);st=QLabel("Supports IP, IP:port, domain, URL and hashes");st.setWordWrap(True);st.setObjectName("muted");v.addWidget(st);side.addWidget(f)
-  hf=QFrame();hf.setObjectName("sideSection");hv=QVBoxLayout(hf);hv.addWidget(QLabel("RECENT SEARCHES"));self.history_layout=QVBoxLayout();hv.addLayout(self.history_layout);side.addWidget(hf)
-  quick=QFrame();quick.setObjectName("sideSection");qv=QVBoxLayout(quick);qv.addWidget(QLabel("QUICK NAVIGATION"));
+  f=QFrame();f.setObjectName("side");v=QVBoxLayout(f);self.i=QLineEdit();self.i.setClearButtonEnabled(True);self.i.setPlaceholderText(tr("IP, domain, URL, hash..."));self.bt=QPushButton(tr("ANALYZE"));self.bt.clicked.connect(self.go);self.i.returnPressed.connect(self.go);v.addWidget(self.i);v.addWidget(self.bt);st=QLabel(tr("Supports IP, IP:port, domain, URL and hashes"));st.setWordWrap(True);st.setObjectName("muted");v.addWidget(st);side.addWidget(f)
+  hf=QFrame();hf.setObjectName("sideSection");hv=QVBoxLayout(hf);hv.addWidget(QLabel(tr("RECENT SEARCHES")));self.history_layout=QVBoxLayout();hv.addLayout(self.history_layout);side.addWidget(hf)
+  quick=QFrame();quick.setObjectName("sideSection");qv=QVBoxLayout(quick);qv.addWidget(QLabel(tr("QUICK NAVIGATION")));
   scroll=QScrollArea();scroll.setWidgetResizable(True);split.addWidget(scroll,1);page=QWidget();scroll.setWidget(page);x=QVBoxLayout(page);x.setSpacing(15);x.setContentsMargins(8,0,8,18);self.scroll=scroll
   self.jump_targets={}
   for title in ("Threat assessment","Key information","Intelligence sources","Vendor statistics","Intelligence graph","Related indicators","Raw data"):
-   btn=QPushButton(title);btn.setCursor(Qt.PointingHandCursor);btn.clicked.connect(lambda checked=False,t=title:self.jump_to(t));qv.addWidget(btn)
+   btn=QPushButton(tr(title));btn.setCursor(Qt.PointingHandCursor);btn.clicked.connect(lambda checked=False,t=title:self.jump_to(t));qv.addWidget(btn)
   side.addWidget(quick)
-  self.headline=QLabel("Enter an indicator to begin");self.headline.setObjectName("iocHeadline");x.addWidget(self.headline)
-  assessment=QFrame();assessment.setObjectName("card");ar=QHBoxLayout(assessment);self.assessment_text=QLabel("THREAT ASSESSMENT\n\nEnter an IOC above to begin.\n\nIntelligence evidence will appear here after analysis.");self.assessment_text.setWordWrap(True);self.assessment_text.setStyleSheet("font-size:14px;font-weight:600;color:#99ABC2;padding:12px;background:transparent");ar.addWidget(self.assessment_text,1);self.vt_circle=VirusTotalGauge();ar.addWidget(self.vt_circle);x.addWidget(assessment);self.jump_targets["Threat assessment"]=assessment
+  self.headline=QLabel(tr("Enter an indicator to begin"));self.headline.setObjectName("iocHeadline");x.addWidget(self.headline)
+  assessment=QFrame();assessment.setObjectName("card");ar=QHBoxLayout(assessment);self.assessment_text=QLabel("\n\n".join((tr("THREAT ASSESSMENT"),tr("Enter an IOC above to begin."),tr("Intelligence evidence will appear here after analysis."))));self.assessment_text.setWordWrap(True);self.assessment_text.setStyleSheet("font-size:14px;font-weight:600;color:#99ABC2;padding:12px;background:transparent");ar.addWidget(self.assessment_text,1);self.vt_circle=VirusTotalGauge();ar.addWidget(self.vt_circle);x.addWidget(assessment);self.jump_targets["Threat assessment"]=assessment
   self.id=Card("ANALYZED INDICATOR");x.addWidget(self.id)
   self.cards=[Card(n) for n in ["Geolocation","Network / RDAP","DNS","VirusTotal","ThreatFox","URLhaus","Analysis state"]]
   self.cards[6].hide()
-  ctx_label=QLabel("KEY INFORMATION");ctx_label.setObjectName("section");x.addWidget(ctx_label);self.jump_targets["Key information"]=ctx_label
+  ctx_label=QLabel(tr("Key information").upper());ctx_label.setObjectName("section");x.addWidget(ctx_label);self.jump_targets["Key information"]=ctx_label
   cg=QGridLayout();cg.setSpacing(10)
   for col,idx in enumerate((0,1,2)):cg.addWidget(self.cards[idx],0,col)
   x.addLayout(cg)
-  src_label=QLabel("INTELLIGENCE SOURCES");src_label.setObjectName("section");x.addWidget(src_label);self.jump_targets["Intelligence sources"]=src_label
+  src_label=QLabel(tr("Intelligence sources").upper());src_label.setObjectName("section");x.addWidget(src_label);self.jump_targets["Intelligence sources"]=src_label
   sg=QGridLayout();sg.setSpacing(10)
   for col,idx in enumerate((3,4,5)):sg.addWidget(self.cards[idx],0,col)
   x.addLayout(sg)
-  stat=QFrame();stat.setObjectName("card");sv=QVBoxLayout(stat);sv.addWidget(QLabel("VENDOR STATISTICS"));stats=QHBoxLayout();self.stat_labels=[]
+  stat=QFrame();stat.setObjectName("card");sv=QVBoxLayout(stat);sv.addWidget(QLabel(tr("Vendor statistics").upper()));stats=QHBoxLayout();self.stat_labels=[]
   for title in ("MALICIOUS","SUSPICIOUS","HARMLESS","UNDETECTED"):
-   block=QFrame();block.setObjectName("mini");bv=QVBoxLayout(block);val=QLabel("—");val.setAlignment(Qt.AlignCenter);val.setStyleSheet("font-size:24px;font-weight:800;color:#B5C5D8");lab=QLabel(title);lab.setAlignment(Qt.AlignCenter);lab.setObjectName("muted");bv.addWidget(val);bv.addWidget(lab);stats.addWidget(block);self.stat_labels.append(val)
+   block=QFrame();block.setObjectName("mini");bv=QVBoxLayout(block);val=QLabel("—");val.setAlignment(Qt.AlignCenter);val.setStyleSheet("font-size:24px;font-weight:800;color:#B5C5D8");lab=QLabel(tr(title.title()).upper());lab.setAlignment(Qt.AlignCenter);lab.setObjectName("muted");bv.addWidget(val);bv.addWidget(lab);stats.addWidget(block);self.stat_labels.append(val)
   sv.addLayout(stats);x.addWidget(stat);self.jump_targets["Vendor statistics"]=stat
-  graph_heading=QLabel("INTELLIGENCE GRAPH");graph_heading.setObjectName("section");x.addWidget(graph_heading);self.jump_targets["Intelligence graph"]=graph_heading
+  graph_heading=QLabel(tr("Intelligence graph").upper());graph_heading.setObjectName("section");x.addWidget(graph_heading);self.jump_targets["Intelligence graph"]=graph_heading
   self.graph=GraphView(self.graph_analyze);self.graph.setMinimumHeight(180);self.graph.setMaximumHeight(740);x.addWidget(self.graph)
-  self.graph_info=QLabel("VirusTotal relationships will appear here after analysis.");self.graph_info.setObjectName("muted");self.graph_info.setWordWrap(True);x.addWidget(self.graph_info)
-  self.rel_info=QLabel("Related indicators · Waiting for analysis");self.rel_info.setObjectName("section");x.addWidget(self.rel_info);self.jump_targets["Related indicators"]=self.rel_info
-  self.rel_table=QTableWidget(0,4);self.rel_table.setMinimumHeight(240);self.rel_table.setHorizontalHeaderLabels(["Type","Indicator","Relationship","Source"]);self.rel_table.setSelectionBehavior(QAbstractItemView.SelectRows);self.rel_table.setSelectionMode(QAbstractItemView.SingleSelection);self.rel_table.setEditTriggers(QAbstractItemView.NoEditTriggers);self.rel_table.horizontalHeader().setStretchLastSection(True);self.rel_table.horizontalHeader().setSectionResizeMode(1,QHeaderView.Stretch);x.addWidget(self.rel_table)
-  rb=QHBoxLayout();self.rel_analyze=QPushButton("Analyze Selected");self.rel_copy=QPushButton("Copy");self.rel_copyall=QPushButton("Copy All");self.rel_export=QPushButton("Export CSV")
+  self.graph_info=QLabel(tr("VirusTotal relationships will appear here after analysis."));self.graph_info.setObjectName("muted");self.graph_info.setWordWrap(True);x.addWidget(self.graph_info)
+  self.rel_info=QLabel(tr("Related indicators · Waiting for analysis"));self.rel_info.setObjectName("section");x.addWidget(self.rel_info);self.jump_targets["Related indicators"]=self.rel_info
+  self.rel_table=QTableWidget(0,4);self.rel_table.setMinimumHeight(240);self.rel_table.setHorizontalHeaderLabels([tr("Type"),tr("Indicator"),tr("Relationship"),tr("Source")]);self.rel_table.setSelectionBehavior(QAbstractItemView.SelectRows);self.rel_table.setSelectionMode(QAbstractItemView.SingleSelection);self.rel_table.setEditTriggers(QAbstractItemView.NoEditTriggers);self.rel_table.horizontalHeader().setStretchLastSection(True);self.rel_table.horizontalHeader().setSectionResizeMode(1,QHeaderView.Stretch);x.addWidget(self.rel_table)
+  rb=QHBoxLayout();self.rel_analyze=QPushButton(tr("Analyze Selected"));self.rel_copy=QPushButton(tr("Copy"));self.rel_copyall=QPushButton(tr("Copy All"));self.rel_export=QPushButton(tr("Export CSV"))
   self.rel_analyze.clicked.connect(self.analyze_selected);self.rel_copy.clicked.connect(self.copy_selected);self.rel_copyall.clicked.connect(self.copy_all_related);self.rel_export.clicked.connect(self.export_related)
   for zbtn in (self.rel_analyze,self.rel_copy,self.rel_copyall,self.rel_export):rb.addWidget(zbtn)
   x.addLayout(rb)
-  raw_label=QLabel("RAW DATA");raw_label.setObjectName("section");x.addWidget(raw_label);self.jump_targets["Raw data"]=raw_label
-  self.raw=QTextEdit();self.raw.setReadOnly(True);self.raw.setMinimumHeight(240);self.raw.setPlainText("Raw upstream evidence will appear here.");x.addWidget(self.raw)
-  self.timing_info=QLabel("Source timing will appear after analysis.");self.timing_info.setObjectName("muted");x.addWidget(self.timing_info)
+  raw_label=QLabel(tr("Raw data").upper());raw_label.setObjectName("section");x.addWidget(raw_label);self.jump_targets["Raw data"]=raw_label
+  self.raw=QTextEdit();self.raw.setReadOnly(True);self.raw.setMinimumHeight(240);self.raw.setPlainText(tr("Raw upstream evidence will appear here."));x.addWidget(self.raw)
+  self.timing_info=QLabel(tr("Source timing will appear after analysis."));self.timing_info.setObjectName("muted");x.addWidget(self.timing_info)
   self.current_ioc=None;self.current_type=None;self.related_cache=[];self.progress_dialog=None;self.timings={};QApplication.instance().setStyleSheet(DARK)
   self.shortcut_focus=QShortcut(QKeySequence("Ctrl+L"),self);self.shortcut_focus.activated.connect(self.focus_ioc)
   self.shortcut_copy=QShortcut(QKeySequence("Ctrl+C"),self);self.shortcut_copy.activated.connect(self.copy_current_ioc)
   self.shortcut_export=QShortcut(QKeySequence("Ctrl+E"),self);self.shortcut_export.activated.connect(self.export_related)
-  self.bt.setToolTip("Analyze indicator (Enter)");self.i.setToolTip("Indicator input (Ctrl+L)");self.rel_export.setToolTip("Export related indicators (Ctrl+E)")
+  self.bt.setToolTip(tr("Analyze indicator (Enter)"));self.i.setToolTip(tr("Indicator input (Ctrl+L)"));self.rel_export.setToolTip(tr("Export related indicators (Ctrl+E)"))
  def jump_to(self,title):
   widget=self.jump_targets.get(title)
   if widget:self.scroll.verticalScrollBar().setValue(widget.mapTo(self.scroll.widget(),QPoint(0,0)).y())
@@ -653,13 +578,13 @@ class Win(QMainWindow):
    item=self.history_layout.takeAt(0)
    if item.widget():item.widget().deleteLater()
   for value in self.history:
-   button=QPushButton(value);button.setToolTip(value + "\nClick to analyze");button.clicked.connect(lambda checked=False,v=value:self.reanalyze(v));self.history_layout.addWidget(button)
+   button=QPushButton(value);button.setToolTip(value + "\n" + tr("Click to analyze"));button.clicked.connect(lambda checked=False,v=value:self.reanalyze(v));self.history_layout.addWidget(button)
  def reanalyze(self,value):
   if self.bt.isEnabled():self.i.setText(value);self.go()
- def update_visuals(self,vt,finding,headline,summary):
+ def update_visuals(self,vt,needs_attention,headline,summary):
   self.headline.setText(self.current_ioc or "Indicator")
-  self.assessment_text.setText("THREAT ASSESSMENT\n\n"+headline+"\n"+summary)
-  self.assessment_text.setStyleSheet("font-size:15px;font-weight:650;color:" + ("#F6AD55" if finding else "#B7E4D8") + ";padding:12px;background:transparent")
+  self.assessment_text.setText(tr("THREAT ASSESSMENT")+"\n\n"+headline+"\n"+summary)
+  self.assessment_text.setStyleSheet("font-size:15px;font-weight:650;color:" + ("#F6AD55" if needs_attention else "#B7E4D8") + ";padding:12px;background:transparent")
   metrics=vt_metrics(vt)
   if metrics:
    detected,total,level,*_=metrics
@@ -671,96 +596,112 @@ class Win(QMainWindow):
    for label in self.stat_labels:label.setText("—")
  def go(self):
   entered=self.i.text().strip();original,z,t=normalize_ioc(entered)
-  if not entered or t=="Unknown":QMessageBox.warning(self,APP,"Enter a valid IOC.");return
-  self.add_recent(z);self.current_ioc=z;self.current_type=t;self.related_cache=[];self.timings={};self.timing_info.setText("Measuring source response times…");self.rel_table.setRowCount(0);self.rel_info.setText("Analysis in progress. Related indicators will load automatically.");self.graph_info.setText("Analysis in progress. Intelligence graph will load automatically.");self.graph.scene_.clear();self.graph.setFixedHeight(210)
-  self.bt.setEnabled(False);self.bt.setText("Analyzing…");self.progress_dialog=AnalysisProgress(self,z);self.progress_dialog.update_stage(1,"Resolving DNS / WHOIS enrichment");self.progress_dialog.show()
+  if not entered or t=="Unknown":QMessageBox.warning(self,APP,tr("Enter a valid IOC."));return
+  self.add_recent(z);self.current_ioc=z;self.current_type=t;self.related_cache=[];self.timings={};self.timing_info.setText(tr("Measuring source response times…"));self.rel_table.setRowCount(0);self.rel_info.setText(tr("Analysis in progress. Related indicators will load automatically."));self.graph_info.setText(tr("Analysis in progress. Intelligence graph will load automatically."));self.graph.scene_.clear();self.graph.setFixedHeight(210)
+  self.bt.setEnabled(False);self.bt.setText(tr("Analyzing…"));self.progress_dialog=AnalysisProgress(self,z);self.progress_dialog.update_stage(1,"Resolving DNS / WHOIS enrichment");self.progress_dialog.show()
   self.w=W(z,t);self.w.progress.connect(self.progress_update);self.w.done.connect(lambda a,b,c,d,e,f:self.done(original,z,t,a,b,c,d,e,f));self.w.start()
- def done(self,original,z,t,s,code,vt,tfv,uhv,timings):
-  self.timings=dict(timings or {});self.raw.setPlainText(s);self.rel_info.setText("Loading VirusTotal relationships…");self.graph_info.setText("Loading evidence-backed VirusTotal relationship graph…");self.progress_update(5,"Discovering related indicators")
+ def done(self,original,z,t,evidence,code,vt,tfv,uhv,timings):
+  self.timings=dict(timings or {});self.raw.setPlainText(json.dumps({"iocinfo": evidence, "VirusTotal": vt, "ThreatFox": tfv, "URLhaus": uhv}, ensure_ascii=False, indent=2));self.rel_info.setText(tr("Loading VirusTotal relationships…"));self.graph_info.setText(tr("Loading evidence-backed VirusTotal relationship graph…"));self.progress_update(5,"Discovering related indicators")
   tf=tf_text(tfv); uh=uh_text(uhv)
-  vt_display=vt_text(vt)+f"\n\nResponse: {self.timings.get('VirusTotal',0):.2f} s"
-  tf=tf+f"\n\nResponse: {self.timings.get('ThreatFox',0):.2f} s"
-  uh=uh+f"\n\nResponse: {self.timings.get('URLhaus',0):.2f} s"
-  tf_bad=tfv.get("status") in ("Authentication error","Rate limit reached","Source unavailable") or str(tfv.get("status","")).startswith("HTTP ")
-  uh_bad=uhv.get("status") in ("Authentication error","Rate limit reached","Source unavailable") or str(uhv.get("status","")).startswith("HTTP ")
-  warnings=sum([tf_bad,uh_bad])
-  final=("Completed" if not warnings else f"Completed with {warnings} source warning" + ("" if warnings==1 else "s"))
-  if code!=0: final+=f" · upstream exit code {code}"
+  vt_display=vt_text(vt)+f"\n\n{tr('Response')}: {self.timings.get('VirusTotal',0):.2f} s"
+  tf=tf+f"\n\n{tr('Response')}: {self.timings.get('ThreatFox',0):.2f} s"
+  uh=uh+f"\n\n{tr('Response')}: {self.timings.get('URLhaus',0):.2f} s"
+  evaluated = sum((
+   vt.get("status") == "Available",
+   tfv.get("status") in ("IOC FOUND", "No match"),
+   uhv.get("status") in ("IOC FOUND", "No match"),
+  ))
+  final = tr("{count} of 3 sources evaluated the indicator", count=evaluated)
+  if code != 0:
+   final += " · " + tr("Enrichment failed")
   for c in self.cards: c.reset_visual()
   vm=vt_metrics(vt)
-  vt_status=vt.get('status','No data')
+  vt_status=tr(vt.get("status","No data"))
   if vm:
    detected,total,level,*_=vm
-   if level=="clear": vt_status=f"✓ VirusTotal: {detected}/{total} detections"
-   elif level=="review": vt_status=f"⚠ VirusTotal: {detected}/{total} detections · REVIEW"
-   else: vt_status=f"⚠ VirusTotal: {detected}/{total} detections · WARNING"
+   if level=="clear": vt_status=f"✓ VirusTotal: {detected}/{total} {tr('detections')}"
+   elif level=="review": vt_status=f"⚠ VirusTotal: {detected}/{total} {tr('detections')} · {tr('REVIEW')}"
+   else: vt_status=f"⚠ VirusTotal: {detected}/{total} {tr('detections')} · {tr('WARNING')}"
   else: vt_status=f"VirusTotal: {vt_status}"
   intel=[]
-  if tfv.get("status")=="IOC FOUND": intel.append("⚠ ThreatFox match")
-  if uhv.get("status")=="IOC FOUND": intel.append("⚠ URLhaus match")
+  if tfv.get("status")=="IOC FOUND": intel.append("⚠ "+tr("ThreatFox match"))
+  if uhv.get("status")=="IOC FOUND": intel.append("⚠ "+tr("URLhaus match"))
   # Keep the input area instructional. Operational results belong in Analysis State.
   summary = final + " · " + vt_status + ((" · "+" · ".join(intel)) if intel else "")
   finding = (vm is not None and vm[0] > 0) or tfv.get("status")=="IOC FOUND" or uhv.get("status")=="IOC FOUND"
-  headline = "⚠ THREAT INTELLIGENCE FOUND" if finding else "✓ NO THREAT INTELLIGENCE FOUND"
+  if finding:
+   headline = "⚠ " + tr("THREAT INTELLIGENCE FOUND")
+  elif evaluated == 0:
+   headline = tr("Insufficient data")
+  elif evaluated < 3:
+   headline = tr("Partial coverage · No matches in evaluated sources")
+  else:
+   headline = "✓ " + tr("NO THREAT INTELLIGENCE FOUND")
   analysis_text = headline + "\n" + summary
-  self.update_visuals(vt,finding,headline,summary)
+  self.update_visuals(vt,finding or evaluated < 3,headline,summary)
   if t=="Domain":
-   d=domain_data(s); ws=whois_state(d,s)
-   identity=f"Original IOC: {original}\nNormalized: {z}" if original!=z else z
-   self.id.set(f"{identity}\nType: Domain\nRegistrar: {d['Registrar']}\nRegistered: {d['Registered']}\nExpires: {d['Expires']}")
-   self.cards[0].set(f"A: {d['A Records']}\nMX: {d['MX Records']}")
-   self.cards[0].findChild(QLabel).setText("DNS RECORDS")
-   self.cards[1].set(f"NS: {d['NS Records']}\nTXT: {d['TXT Records']}")
-   self.cards[1].findChild(QLabel).setText("DNS DETAILS")
-   self.cards[2].set(f"Status: {ws}\nRegistrar: {d['Registrar']}\nRegistered: {d['Registered']}\nExpires: {d['Expires']}\nLast Changed: {d['Last Changed']}")
+   d={**evidence.get("DNS", {}), **evidence.get("WHOIS", {})}
+   ws=tr("Available" if evidence.get("WHOIS") else "No data")
+   identity=f"{tr('Original IOC')}: {original}\n{tr('Normalized')}: {z}" if original!=z else z
+   self.id.set(f"{identity}\n{tr('Type')}: {tr('Domain')}\n{tr('Registrar')}: {d.get('Registrar', '—')}\n{tr('Registered')}: {d.get('Registered', '—')}\n{tr('Expires')}: {d.get('Expires', '—')}")
+   self.cards[0].set(f"A: {d.get('A Records', '—')}\nMX: {d.get('MX Records', '—')}")
+   self.cards[0].findChild(QLabel).setText(tr("DNS RECORDS"))
+   self.cards[1].set(f"NS: {d.get('NS Records', '—')}\nTXT: {d.get('TXT Records', '—')}")
+   self.cards[1].findChild(QLabel).setText(tr("DNS DETAILS"))
+   self.cards[2].set(f"{tr('Status')}: {ws}\n{tr('Registrar')}: {d.get('Registrar', '—')}\n{tr('Registered')}: {d.get('Registered', '—')}\n{tr('Expires')}: {d.get('Expires', '—')}\n{tr('Last Changed')}: {d.get('Last Changed', '—')}")
    self.cards[2].findChild(QLabel).setText("WHOIS")
    self.cards[3].set_vt(vt,True,vt_display)
    self.cards[4].set_intel("ThreatFox",tfv,tf,True)
    self.cards[5].set_intel("URLhaus",uhv,uh,True)
-   self.cards[6].set_analysis(analysis_text,finding,True)
+   self.cards[6].set_analysis(analysis_text,finding or evaluated < 3,True)
   elif t=="URL":
-   host,ips=url_data(s)
-   if host=="—": host=url_host(z)
-   identity=f"Original IOC: {original}\nNormalized: {z}" if original!=z else z
-   self.id.set(f"{identity}\nType: URL\nHost: {host}\nResolved IP(s): {ips}")
-   self.cards[0].findChild(QLabel).setText("URL TARGET")
-   self.cards[0].set(f"Host: {host}\nScheme: {z.split(':',1)[0].upper() if ':' in z else '—'}")
-   self.cards[1].findChild(QLabel).setText("DNS RESOLUTION")
+   host=url_host(z)
+   ips=evidence.get("DNS", {}).get("A Records", "—")
+   identity=f"{tr('Original IOC')}: {original}\n{tr('Normalized')}: {z}" if original!=z else z
+   self.id.set(f"{identity}\n{tr('Type')}: URL\n{tr('Host')}: {host}\n{tr('Resolved IP(s)')}: {ips}")
+   self.cards[0].findChild(QLabel).setText(tr("URL TARGET"))
+   self.cards[0].set(f"{tr('Host')}: {host}\n{tr('Scheme')}: {z.split(':',1)[0].upper() if ':' in z else '—'}")
+   self.cards[1].findChild(QLabel).setText(tr("DNS RESOLUTION"))
    self.cards[1].set(f"A: {ips}")
-   self.cards[2].findChild(QLabel).setText("UPSTREAM EVIDENCE")
-   self.cards[2].set("See Raw Data for complete iocinfo evidence")
+   self.cards[2].findChild(QLabel).setText(tr("UPSTREAM EVIDENCE"))
+   self.cards[2].set(tr("See Raw Data for complete iocinfo evidence"))
    self.cards[3].set_vt(vt,True,vt_display)
    self.cards[4].set_intel("ThreatFox",tfv,tf,True)
    self.cards[5].set_intel("URLhaus",uhv,uh,True)
-   self.cards[6].set_analysis(analysis_text,finding,True)
+   self.cards[6].set_analysis(analysis_text,finding or evaluated < 3,True)
   else:
-   identity=f"Original IOC: {original}\nNormalized: {z}" if original!=z else z
-   self.id.set(f"{identity}\nType: {t}\nOrganization: {fld(s,'Org')}\nASN: {fld(s,'ASN')}")
-   self.cards[0].findChild(QLabel).setText("GEOLOCATION")
-   self.cards[0].set(f"Location: {fld(s,'Location')}\nISP: {fld(s,'ISP')}\nFlags: {fld(s,'Flags')}")
+   fields={**evidence.get("RDAP", {}), **evidence.get("IP information", {})}
+   identity=f"{tr('Original IOC')}: {original}\n{tr('Normalized')}: {z}" if original!=z else z
+   ipinfo_org = fields.get("Org/ASN", "")
+   match = re.fullmatch(r"(AS[0-9]+)(?:\s+(.+))?", ipinfo_org)
+   asn = match.group(1) if match else "—"
+   org = fields.get("Org") or (match.group(2) if match else ipinfo_org) or "—"
+   self.id.set(f"{identity}\n{tr('Type')}: {tr(t)}\n{tr('Organization')}: {org}\nASN: {asn}")
+   self.cards[0].findChild(QLabel).setText(tr("IP information").upper())
+   self.cards[0].set(f"{tr('Organization')}: {fields.get('Org/ASN', fields.get('Org', '—'))}")
    self.cards[1].findChild(QLabel).setText("NETWORK / RDAP")
-   self.cards[1].set(f"Network: {fld(s,'Network')}\nCIDR: {fld(s,'CIDR')}\nRegistered: {fld(s,'Registered')}")
+   self.cards[1].set(f"{tr('Network')}: {fields.get('Network', '—')}\nCIDR: {fields.get('CIDR', '—')}\n{tr('Registered')}: {fields.get('Registered', '—')}")
    self.cards[2].findChild(QLabel).setText("DNS")
-   self.cards[2].set(f"Hostname: {fld(s,'Hostname')}")
+   self.cards[2].set(f"{tr('Hostname')}: {fields.get('Hostname', '—')}")
    self.cards[3].set_vt(vt,True,vt_display)
    self.cards[4].set_intel("ThreatFox",tfv,tf,True)
    self.cards[5].set_intel("URLhaus",uhv,uh,True)
-   self.cards[6].set_analysis(analysis_text,finding,True)
+   self.cards[6].set_analysis(analysis_text,finding or evaluated < 3,True)
 
   # v0.5.3: one automatic relationship query feeds both the table and static graph.
-  if vt.get("status") in ("Available","No existing report"):
+  if vt.get("status") == "Available":
    self.auto_rel=RelatedWorker(self.current_type,self.current_ioc);self.auto_rel.done.connect(self.auto_related_done);self.auto_rel.start()
   else:
-   self.rel_info.setText("Related indicators unavailable: VirusTotal report is not available for relationship discovery.")
-   self.graph_info.setText("Intelligence graph unavailable: no VirusTotal relationships were queried.")
+   self.rel_info.setText(tr("Related indicators unavailable: VirusTotal report is not available for relationship discovery."))
+   self.graph_info.setText(tr("Intelligence graph unavailable: no VirusTotal relationships were queried."))
    total=sum(self.timings.get(k,0) for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus"))
-   self.timing_info.setText("  ·  ".join([f"{k}: {self.timings[k]:.2f} s" for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus") if k in self.timings])+f"  ·  Total: {total:.2f} s")
-   self.finish_progress("Analysis complete — no relationship graph available")
+   self.timing_info.setText("  ·  ".join([f"{tr(k)}: {self.timings[k]:.2f} s" for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus") if k in self.timings])+f"  ·  Total: {total:.2f} s")
+   self.finish_progress(tr("Analysis complete — no relationship graph available"))
 
  def progress_update(self,completed,current):
   if self.progress_dialog:self.progress_dialog.update_stage(completed,current)
  def finish_progress(self,message="Analysis complete"):
-  self.bt.setEnabled(True);self.bt.setText("Analyze")
+  self.bt.setEnabled(True);self.bt.setText(tr("Analyze"))
   if self.progress_dialog:
    self.progress_dialog.update_stage(7,message);self.progress_dialog.accept();self.progress_dialog=None
 
@@ -771,8 +712,8 @@ class Win(QMainWindow):
   for row in rows:
    if row.get("indicator")==self.current_ioc: continue
    filtered.append(row);n=self.rel_table.rowCount();self.rel_table.insertRow(n)
-   for col,key in enumerate(("type","indicator","relationship","source")):self.rel_table.setItem(n,col,QTableWidgetItem(row[key]))
-  msg=f"{len(filtered)} related indicator(s) returned by VirusTotal."
+   for col,key in enumerate(("type","indicator","relationship","source")):self.rel_table.setItem(n,col,QTableWidgetItem(tr(row[key]) if key=="type" else row[key]))
+  msg=tr("{count} related indicator(s) returned by VirusTotal.", count=len(filtered))
   if notes:msg+="  " + " · ".join(notes)
   self.rel_info.setText(msg)
   self.progress_update(6,"Building intelligence graph")
@@ -780,17 +721,19 @@ class Win(QMainWindow):
   from collections import Counter
   relationships=Counter(str(r.get("relationship") or "related") for r in filtered[:24])
   details=" · ".join(f"{name}: {count}" for name,count in sorted(relationships.items()))
-  gmsg=f"VirusTotal · {len({(r.get("type"),str(r.get("indicator", "")).casefold()) for r in filtered[:24] if r.get("indicator")})} distinct indicator(s) visualized" + (f" · Relationships: {details}" if details else " · No relationships to display")
+  distinct=len({(r.get("type"),str(r["indicator"]).casefold()) for r in filtered[:24] if r.get("indicator")})
+  gmsg="VirusTotal · "+tr("{count} distinct indicator(s) visualized", count=distinct)
+  gmsg+=" · "+(tr("Relationships")+": "+details if details else tr("No relationships to display"))
   if notes:gmsg+="  " + " · ".join(notes)
   self.graph_info.setText(gmsg)
   self.graph.setFixedHeight(230 if len(filtered)<=3 else (400 if len(filtered)<=8 else 680))
   total=sum(self.timings.get(k,0) for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph"))
-  self.timing_info.setText("  ·  ".join([f"{k}: {self.timings[k]:.2f} s" for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph") if k in self.timings])+f"  ·  Total: {total:.2f} s")
-  self.finish_progress("Analysis complete")
+  self.timing_info.setText("  ·  ".join([f"{tr(k)}: {self.timings[k]:.2f} s" for k in ("DNS / WHOIS","VirusTotal","ThreatFox","URLhaus","Related indicators","Intelligence graph") if k in self.timings])+f"  ·  Total: {total:.2f} s")
+  self.finish_progress(tr("Analysis complete"))
 
  def load_related(self):
   if not self.current_ioc or not self.current_type:return
-  self.rel_info.setText("Loading VirusTotal relationships…")
+  self.rel_info.setText(tr("Loading VirusTotal relationships…"))
   self.auto_rel=RelatedWorker(self.current_type,self.current_ioc);self.auto_rel.done.connect(self.auto_related_done);self.auto_rel.start()
  def related_done(self,rows,notes,elapsed=0.0):
   self.auto_related_done(rows,notes,elapsed)
@@ -826,7 +769,7 @@ class Win(QMainWindow):
   if vals:QApplication.clipboard().setText("\n".join(vals))
  def export_related(self):
   if not self.rel_table.rowCount():return
-  path,_=QFileDialog.getSaveFileName(self,"Export Related Indicators","related-indicators.csv","CSV files (*.csv)")
+  path,_=QFileDialog.getSaveFileName(self,tr("Export Related Indicators"),"related-indicators.csv",tr("CSV files (*.csv)"))
   if not path:return
   import csv
   with open(path,"w",newline="",encoding="utf-8-sig") as f:
@@ -834,4 +777,17 @@ class Win(QMainWindow):
    for r in range(self.rel_table.rowCount()):w.writerow([self.rel_table.item(r,c).text() for c in range(4)])
 
 if __name__=="__main__":
- app=QApplication(sys.argv);w=Win();w.showMaximized();sys.exit(app.exec())
+ app=QApplication(sys.argv)
+ app.setApplicationName(APP)
+ app.setWindowIcon(app_icon())
+ smoke_test=sys.argv[1:2]==["--smoke-test"]
+ language=sys.argv[2] if smoke_test and len(sys.argv)>2 else None
+ initialize_language(app, language)
+ w=Win()
+ if smoke_test:
+  from localization import LANGUAGES
+  expected={"en":"Settings","es":"Configuración","pt_BR":"Configurações"}
+  ok=(language in LANGUAGES and w.settings_button.text()==expected[language]
+      and enrich("0" * 64, "Hash")=={} and not app.windowIcon().pixmap(32,32).isNull())
+  sys.exit(0 if ok else 1)
+ w.showMaximized();sys.exit(app.exec())

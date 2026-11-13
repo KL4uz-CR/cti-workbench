@@ -9,6 +9,11 @@ from pathlib import Path
 
 SERVICE = "CTI Workbench"
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+LEGACY_PLACEHOLDERS = {
+    "PASTE_YOUR_VIRUSTOTAL_API_KEY_HERE",
+    "YOUR_VIRUSTOTAL_API_KEY",
+    "YOUR_ABUSECH_AUTH_KEY",
+}
 PROVIDERS = {
     "virustotal": ("VT_API_KEY", "virustotal.json", "api_key"),
     "abusech": ("ABUSECH_AUTH_KEY", "abusech.json", "auth_key"),
@@ -74,7 +79,7 @@ def resolve(provider, *, environ=None, config_dir=None):
             if isinstance(data, dict):
                 raw = data.get(field)
                 value = raw.strip() if isinstance(raw, str) else ""
-                if value:
+                if value and value.upper() not in LEGACY_PLACEHOLDERS:
                     return Credential(value, "Legacy JSON")
     except (OSError, ValueError, TypeError):
         # Legacy configuration is optional; never reveal its contents.

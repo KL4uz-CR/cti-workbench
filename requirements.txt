@@ -1,5 +1,5 @@
 PySide6>=6.7,<7
-iocinfo @ git+https://github.com/homestarfuzzer/iocinfo.git
+iocinfo @ git+https://github.com/homestarfuzzer/iocinfo.git@c212cbc88a8164025b93b34070b3b202959fda2e
 pyinstaller>=6.0
 
 certifi>=2025.0

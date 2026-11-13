@@ -1,0 +1,778 @@
+{
+  "Settings": {
+    "es": "Configuración",
+    "pt_BR": "Configurações"
+  },
+  "Language": {
+    "es": "Idioma",
+    "pt_BR": "Idioma"
+  },
+  "Language saved. Restart CTI Workbench to apply the change.": {
+    "es": "Idioma guardado. Reinicia CTI Workbench para aplicar el cambio.",
+    "pt_BR": "Idioma salvo. Reinicie o CTI Workbench para aplicar a alteração."
+  },
+  "Could not save the language preference.": {
+    "es": "No se pudo guardar el idioma.",
+    "pt_BR": "Não foi possível salvar o idioma."
+  },
+  "IP, domain, URL, hash...": {
+    "es": "IP, dominio, URL, hash…",
+    "pt_BR": "IP, domínio, URL, hash…"
+  },
+  "ANALYZE": {
+    "es": "ANALIZAR",
+    "pt_BR": "ANALISAR"
+  },
+  "Analyze": {
+    "es": "Analizar",
+    "pt_BR": "Analisar"
+  },
+  "Supports IP, IP:port, domain, URL and hashes": {
+    "es": "Admite IP, IP:puerto, dominios, URL y hashes",
+    "pt_BR": "Aceita IP, IP:porta, domínios, URLs e hashes"
+  },
+  "RECENT SEARCHES": {
+    "es": "BÚSQUEDAS RECIENTES",
+    "pt_BR": "BUSCAS RECENTES"
+  },
+  "QUICK NAVIGATION": {
+    "es": "NAVEGACIÓN RÁPIDA",
+    "pt_BR": "NAVEGAÇÃO RÁPIDA"
+  },
+  "Threat assessment": {
+    "es": "Evaluación de amenazas",
+    "pt_BR": "Avaliação de ameaças"
+  },
+  "Key information": {
+    "es": "Información clave",
+    "pt_BR": "Informações principais"
+  },
+  "Intelligence sources": {
+    "es": "Fuentes de inteligencia",
+    "pt_BR": "Fontes de inteligência"
+  },
+  "Vendor statistics": {
+    "es": "Estadísticas de proveedores",
+    "pt_BR": "Estatísticas dos fornecedores"
+  },
+  "Intelligence graph": {
+    "es": "Grafo de inteligencia",
+    "pt_BR": "Grafo de inteligência"
+  },
+  "Related indicators": {
+    "es": "Indicadores relacionados",
+    "pt_BR": "Indicadores relacionados"
+  },
+  "Raw data": {
+    "es": "Datos sin procesar",
+    "pt_BR": "Dados brutos"
+  },
+  "Enter an indicator to begin": {
+    "es": "Ingresa un indicador para comenzar",
+    "pt_BR": "Insira um indicador para começar"
+  },
+  "THREAT ASSESSMENT": {
+    "es": "EVALUACIÓN DE AMENAZAS",
+    "pt_BR": "AVALIAÇÃO DE AMEAÇAS"
+  },
+  "Enter an IOC above to begin.": {
+    "es": "Ingresa un IOC para comenzar.",
+    "pt_BR": "Insira um IOC para começar."
+  },
+  "Intelligence evidence will appear here after analysis.": {
+    "es": "La evidencia aparecerá aquí después del análisis.",
+    "pt_BR": "As evidências serão exibidas aqui após a análise."
+  },
+  "ANALYZED INDICATOR": {
+    "es": "INDICADOR ANALIZADO",
+    "pt_BR": "INDICADOR ANALISADO"
+  },
+  "Geolocation": {
+    "es": "Geolocalización",
+    "pt_BR": "Geolocalização"
+  },
+  "Network / RDAP": {
+    "es": "Red / RDAP",
+    "pt_BR": "Rede / RDAP"
+  },
+  "Analysis state": {
+    "es": "Estado del análisis",
+    "pt_BR": "Status da análise"
+  },
+  "Malicious": {
+    "es": "Malicioso",
+    "pt_BR": "Malicioso"
+  },
+  "Suspicious": {
+    "es": "Sospechoso",
+    "pt_BR": "Suspeito"
+  },
+  "Harmless": {
+    "es": "Inofensivo",
+    "pt_BR": "Inofensivo"
+  },
+  "Undetected": {
+    "es": "Sin detectar",
+    "pt_BR": "Não detectado"
+  },
+  "VirusTotal relationships will appear here after analysis.": {
+    "es": "Las relaciones de VirusTotal aparecerán aquí después del análisis.",
+    "pt_BR": "As relações do VirusTotal serão exibidas aqui após a análise."
+  },
+  "Related indicators · Waiting for analysis": {
+    "es": "Indicadores relacionados · En espera del análisis",
+    "pt_BR": "Indicadores relacionados · Aguardando análise"
+  },
+  "Type": {
+    "es": "Tipo",
+    "pt_BR": "Tipo"
+  },
+  "Indicator": {
+    "es": "Indicador",
+    "pt_BR": "Indicador"
+  },
+  "Relationship": {
+    "es": "Relación",
+    "pt_BR": "Relação"
+  },
+  "Source": {
+    "es": "Fuente",
+    "pt_BR": "Fonte"
+  },
+  "Analyze Selected": {
+    "es": "Analizar selección",
+    "pt_BR": "Analisar selecionado"
+  },
+  "Copy": {
+    "es": "Copiar",
+    "pt_BR": "Copiar"
+  },
+  "Copy All": {
+    "es": "Copiar todo",
+    "pt_BR": "Copiar tudo"
+  },
+  "Export CSV": {
+    "es": "Exportar CSV",
+    "pt_BR": "Exportar CSV"
+  },
+  "Raw upstream evidence will appear here.": {
+    "es": "La evidencia de las fuentes aparecerá aquí.",
+    "pt_BR": "As evidências das fontes serão exibidas aqui."
+  },
+  "Source timing will appear after analysis.": {
+    "es": "Los tiempos de respuesta aparecerán después del análisis.",
+    "pt_BR": "Os tempos de resposta serão exibidos após a análise."
+  },
+  "Analyze indicator (Enter)": {
+    "es": "Analizar indicador (Enter)",
+    "pt_BR": "Analisar indicador (Enter)"
+  },
+  "Indicator input (Ctrl+L)": {
+    "es": "Campo de indicador (Ctrl+L)",
+    "pt_BR": "Campo de indicador (Ctrl+L)"
+  },
+  "Export related indicators (Ctrl+E)": {
+    "es": "Exportar indicadores relacionados (Ctrl+E)",
+    "pt_BR": "Exportar indicadores relacionados (Ctrl+E)"
+  },
+  "Click to analyze": {
+    "es": "Haz clic para analizar",
+    "pt_BR": "Clique para analisar"
+  },
+  "Enter a valid IOC.": {
+    "es": "Ingresa un IOC válido.",
+    "pt_BR": "Insira um IOC válido."
+  },
+  "Measuring source response times…": {
+    "es": "Midiendo los tiempos de respuesta…",
+    "pt_BR": "Medindo os tempos de resposta…"
+  },
+  "Analysis in progress. Related indicators will load automatically.": {
+    "es": "Análisis en curso. Los indicadores relacionados se cargarán automáticamente.",
+    "pt_BR": "Análise em andamento. Os indicadores relacionados serão carregados automaticamente."
+  },
+  "Analysis in progress. Intelligence graph will load automatically.": {
+    "es": "Análisis en curso. El grafo se cargará automáticamente.",
+    "pt_BR": "Análise em andamento. O grafo será carregado automaticamente."
+  },
+  "Analyzing…": {
+    "es": "Analizando…",
+    "pt_BR": "Analisando…"
+  },
+  "Resolving DNS / WHOIS enrichment": {
+    "es": "Consultando DNS y WHOIS",
+    "pt_BR": "Consultando DNS e WHOIS"
+  },
+  "DNS / WHOIS enrichment": {
+    "es": "Enriquecimiento DNS / WHOIS",
+    "pt_BR": "Enriquecimento DNS / WHOIS"
+  },
+  "DNS / WHOIS": {
+    "es": "DNS / WHOIS",
+    "pt_BR": "DNS / WHOIS"
+  },
+  "Initial pipeline": {
+    "es": "Consultas iniciales",
+    "pt_BR": "Consultas iniciais"
+  },
+  "Querying VirusTotal": {
+    "es": "Consultando VirusTotal",
+    "pt_BR": "Consultando VirusTotal"
+  },
+  "Querying ThreatFox": {
+    "es": "Consultando ThreatFox",
+    "pt_BR": "Consultando ThreatFox"
+  },
+  "Querying URLhaus": {
+    "es": "Consultando URLhaus",
+    "pt_BR": "Consultando URLhaus"
+  },
+  "Discovering related indicators": {
+    "es": "Buscando indicadores relacionados",
+    "pt_BR": "Buscando indicadores relacionados"
+  },
+  "Analysis Progress": {
+    "es": "Progreso del análisis",
+    "pt_BR": "Progresso da análise"
+  },
+  "ANALYZING IOC": {
+    "es": "ANALIZANDO IOC",
+    "pt_BR": "ANALISANDO IOC"
+  },
+  "Starting analysis…": {
+    "es": "Iniciando el análisis…",
+    "pt_BR": "Iniciando a análise…"
+  },
+  "Complete": {
+    "es": "Completado",
+    "pt_BR": "Concluído"
+  },
+  "Analysis complete": {
+    "es": "Análisis completado",
+    "pt_BR": "Análise concluída"
+  },
+  "Analysis complete — no relationship graph available": {
+    "es": "Análisis completado. Grafo de relaciones no disponible.",
+    "pt_BR": "Análise concluída. Grafo de relações indisponível."
+  },
+  "VIRUSTOTAL DETECTIONS": {
+    "es": "DETECCIONES DE VIRUSTOTAL",
+    "pt_BR": "DETECÇÕES DO VIRUSTOTAL"
+  },
+  "NO DETECTIONS": {
+    "es": "SIN DETECCIONES",
+    "pt_BR": "SEM DETECÇÕES"
+  },
+  "REVIEW RECOMMENDED": {
+    "es": "SE RECOMIENDA REVISAR",
+    "pt_BR": "REVISÃO RECOMENDADA"
+  },
+  "MULTIPLE DETECTIONS": {
+    "es": "VARIAS DETECCIONES",
+    "pt_BR": "MÚLTIPLAS DETECÇÕES"
+  },
+  "NO REPORT": {
+    "es": "SIN INFORME",
+    "pt_BR": "SEM RELATÓRIO"
+  },
+  "Waiting for analysis": {
+    "es": "En espera del análisis",
+    "pt_BR": "Aguardando análise"
+  },
+  "Loading VirusTotal relationships…": {
+    "es": "Cargando relaciones de VirusTotal…",
+    "pt_BR": "Carregando relações do VirusTotal…"
+  },
+  "Loading evidence-backed VirusTotal relationship graph…": {
+    "es": "Cargando el grafo de relaciones de VirusTotal…",
+    "pt_BR": "Carregando o grafo de relações do VirusTotal…"
+  },
+  "Completed": {
+    "es": "Completado",
+    "pt_BR": "Concluído"
+  },
+  "Completed with {count} source warning(s)": {
+    "es": "Completado con {count} advertencia(s) de fuentes",
+    "pt_BR": "Concluído com {count} aviso(s) das fontes"
+  },
+  "Enrichment failed": {
+    "es": "Error de enriquecimiento",
+    "pt_BR": "Falha no enriquecimento"
+  },
+  "detections": {
+    "es": "detecciones",
+    "pt_BR": "detecções"
+  },
+  "REVIEW": {
+    "es": "REVISAR",
+    "pt_BR": "REVISAR"
+  },
+  "WARNING": {
+    "es": "ADVERTENCIA",
+    "pt_BR": "AVISO"
+  },
+  "ThreatFox match": {
+    "es": "Coincidencia en ThreatFox",
+    "pt_BR": "Correspondência no ThreatFox"
+  },
+  "URLhaus match": {
+    "es": "Coincidencia en URLhaus",
+    "pt_BR": "Correspondência no URLhaus"
+  },
+  "THREAT INTELLIGENCE FOUND": {
+    "es": "EVIDENCIA DE AMENAZAS ENCONTRADA",
+    "pt_BR": "EVIDÊNCIAS DE AMEAÇAS ENCONTRADAS"
+  },
+  "NO THREAT INTELLIGENCE FOUND": {
+    "es": "SIN EVIDENCIA DE AMENAZAS",
+    "pt_BR": "SEM EVIDÊNCIAS DE AMEAÇAS"
+  },
+  "Available": {
+    "es": "Disponible",
+    "pt_BR": "Disponível"
+  },
+  "No data": {
+    "es": "Sin datos",
+    "pt_BR": "Sem dados"
+  },
+  "Original IOC": {
+    "es": "IOC original",
+    "pt_BR": "IOC original"
+  },
+  "Normalized": {
+    "es": "Normalizado",
+    "pt_BR": "Normalizado"
+  },
+  "Domain": {
+    "es": "Dominio",
+    "pt_BR": "Domínio"
+  },
+  "IP Address": {
+    "es": "Dirección IP",
+    "pt_BR": "Endereço IP"
+  },
+  "Hash": {
+    "es": "Hash",
+    "pt_BR": "Hash"
+  },
+  "Registrar": {
+    "es": "Registrador",
+    "pt_BR": "Registrador"
+  },
+  "Registered": {
+    "es": "Registro",
+    "pt_BR": "Registro"
+  },
+  "Expires": {
+    "es": "Vencimiento",
+    "pt_BR": "Expiração"
+  },
+  "Last Changed": {
+    "es": "Último cambio",
+    "pt_BR": "Última alteração"
+  },
+  "DNS RECORDS": {
+    "es": "REGISTROS DNS",
+    "pt_BR": "REGISTROS DNS"
+  },
+  "DNS DETAILS": {
+    "es": "DETALLES DNS",
+    "pt_BR": "DETALHES DNS"
+  },
+  "Status": {
+    "es": "Estado",
+    "pt_BR": "Status"
+  },
+  "Host": {
+    "es": "Host",
+    "pt_BR": "Host"
+  },
+  "Resolved IP(s)": {
+    "es": "IP resueltas",
+    "pt_BR": "IPs resolvidos"
+  },
+  "URL TARGET": {
+    "es": "DESTINO DE LA URL",
+    "pt_BR": "DESTINO DA URL"
+  },
+  "Scheme": {
+    "es": "Esquema",
+    "pt_BR": "Esquema"
+  },
+  "DNS RESOLUTION": {
+    "es": "RESOLUCIÓN DNS",
+    "pt_BR": "RESOLUÇÃO DNS"
+  },
+  "UPSTREAM EVIDENCE": {
+    "es": "EVIDENCIA DE LA FUENTE",
+    "pt_BR": "EVIDÊNCIAS DA FONTE"
+  },
+  "See Raw Data for complete iocinfo evidence": {
+    "es": "Consulta los datos sin procesar para ver la evidencia de iocinfo.",
+    "pt_BR": "Consulte os dados brutos para ver as evidências do iocinfo."
+  },
+  "Organization": {
+    "es": "Organización",
+    "pt_BR": "Organização"
+  },
+  "Location": {
+    "es": "Ubicación",
+    "pt_BR": "Localização"
+  },
+  "Flags": {
+    "es": "Indicadores",
+    "pt_BR": "Sinalizadores"
+  },
+  "Network": {
+    "es": "Red",
+    "pt_BR": "Rede"
+  },
+  "Hostname": {
+    "es": "Nombre de host",
+    "pt_BR": "Nome do host"
+  },
+  "Related indicators unavailable: VirusTotal report is not available for relationship discovery.": {
+    "es": "Indicadores relacionados no disponibles. Falta el informe de VirusTotal.",
+    "pt_BR": "Indicadores relacionados indisponíveis. Falta o relatório do VirusTotal."
+  },
+  "Intelligence graph unavailable: no VirusTotal relationships were queried.": {
+    "es": "Grafo no disponible. No se consultaron relaciones en VirusTotal.",
+    "pt_BR": "Grafo indisponível. Nenhuma relação foi consultada no VirusTotal."
+  },
+  "{count} related indicator(s) returned by VirusTotal.": {
+    "es": "VirusTotal devolvió {count} indicador(es) relacionado(s).",
+    "pt_BR": "O VirusTotal retornou {count} indicador(es) relacionado(s)."
+  },
+  "Building intelligence graph": {
+    "es": "Construyendo el grafo de inteligencia",
+    "pt_BR": "Construindo o grafo de inteligência"
+  },
+  "{count} distinct indicator(s) visualized": {
+    "es": "{count} indicador(es) distinto(s) en el grafo",
+    "pt_BR": "{count} indicador(es) distinto(s) no grafo"
+  },
+  "Relationships": {
+    "es": "Relaciones",
+    "pt_BR": "Relações"
+  },
+  "No relationships to display": {
+    "es": "Sin relaciones para mostrar",
+    "pt_BR": "Sem relações para exibir"
+  },
+  "Export Related Indicators": {
+    "es": "Exportar indicadores relacionados",
+    "pt_BR": "Exportar indicadores relacionados"
+  },
+  "CSV files (*.csv)": {
+    "es": "Archivos CSV (*.csv)",
+    "pt_BR": "Arquivos CSV (*.csv)"
+  },
+  "Vendor detections": {
+    "es": "Detecciones de proveedores",
+    "pt_BR": "Detecções dos fornecedores"
+  },
+  "Community reputation": {
+    "es": "Reputación de la comunidad",
+    "pt_BR": "Reputação da comunidade"
+  },
+  "Response": {
+    "es": "Respuesta",
+    "pt_BR": "Resposta"
+  },
+  "Not configured": {
+    "es": "Sin configurar",
+    "pt_BR": "Não configurado"
+  },
+  "No existing report": {
+    "es": "Sin informe previo",
+    "pt_BR": "Sem relatório existente"
+  },
+  "Credential store unavailable": {
+    "es": "Almacén de credenciales no disponible",
+    "pt_BR": "Armazenamento de credenciais indisponível"
+  },
+  "Authentication/permission error": {
+    "es": "Error de autenticación o permisos",
+    "pt_BR": "Erro de autenticação ou permissão"
+  },
+  "Authentication error": {
+    "es": "Error de autenticación",
+    "pt_BR": "Erro de autenticação"
+  },
+  "Permission unavailable": {
+    "es": "Permiso no disponible",
+    "pt_BR": "Permissão indisponível"
+  },
+  "Rate limit reached": {
+    "es": "Límite de consultas alcanzado",
+    "pt_BR": "Limite de consultas atingido"
+  },
+  "Source unavailable": {
+    "es": "Fuente no disponible",
+    "pt_BR": "Fonte indisponível"
+  },
+  "Source error": {
+    "es": "Error de la fuente",
+    "pt_BR": "Erro na fonte"
+  },
+  "Unsupported IOC type": {
+    "es": "Tipo de IOC no admitido",
+    "pt_BR": "Tipo de IOC incompatível"
+  },
+  "No match": {
+    "es": "Sin coincidencias",
+    "pt_BR": "Sem correspondência"
+  },
+  "IOC FOUND": {
+    "es": "IOC ENCONTRADO",
+    "pt_BR": "IOC ENCONTRADO"
+  },
+  "{count} match(es)": {
+    "es": "{count} coincidencia(s)",
+    "pt_BR": "{count} correspondência(s)"
+  },
+  "Malware": {
+    "es": "Malware",
+    "pt_BR": "Malware"
+  },
+  "Threat": {
+    "es": "Amenaza",
+    "pt_BR": "Ameaça"
+  },
+  "Confidence": {
+    "es": "Confianza",
+    "pt_BR": "Confiança"
+  },
+  "First seen": {
+    "es": "Primera observación",
+    "pt_BR": "Primeira observação"
+  },
+  "Last seen": {
+    "es": "Última observación",
+    "pt_BR": "Última observação"
+  },
+  "Tags": {
+    "es": "Etiquetas",
+    "pt_BR": "Tags"
+  },
+  "Date added": {
+    "es": "Fecha de incorporación",
+    "pt_BR": "Data de inclusão"
+  },
+  "API credentials are stored in Windows Credential Manager.": {
+    "es": "Las credenciales de API se guardan en el Administrador de credenciales de Windows.",
+    "pt_BR": "As credenciais de API são salvas no Gerenciador de Credenciais do Windows."
+  },
+  "Existing credentials are never shown or changed automatically.": {
+    "es": "Las credenciales existentes se mantienen ocultas y solo se cambian manualmente.",
+    "pt_BR": "As credenciais existentes ficam ocultas e só são alteradas manualmente."
+  },
+  "Credential source: checking...": {
+    "es": "Fuente de credenciales: comprobando…",
+    "pt_BR": "Origem da credencial: verificando…"
+  },
+  "Enter a new key (leave blank to keep current)": {
+    "es": "Ingresa una clave nueva (en blanco conserva la actual)",
+    "pt_BR": "Insira uma nova chave (deixe em branco para manter a atual)"
+  },
+  "Show": {
+    "es": "Mostrar",
+    "pt_BR": "Mostrar"
+  },
+  "Hide": {
+    "es": "Ocultar",
+    "pt_BR": "Ocultar"
+  },
+  "Test Connection": {
+    "es": "Probar conexión",
+    "pt_BR": "Testar conexão"
+  },
+  "Save": {
+    "es": "Guardar",
+    "pt_BR": "Salvar"
+  },
+  "Remove": {
+    "es": "Eliminar",
+    "pt_BR": "Remover"
+  },
+  "Remove the stored credential": {
+    "es": "Eliminar la credencial guardada",
+    "pt_BR": "Remover a credencial salva"
+  },
+  "Not tested": {
+    "es": "Sin probar",
+    "pt_BR": "Não testada"
+  },
+  "Close": {
+    "es": "Cerrar",
+    "pt_BR": "Fechar"
+  },
+  "Credential source: ": {
+    "es": "Fuente de credenciales: ",
+    "pt_BR": "Origem da credencial: "
+  },
+  "Windows Credential Manager unavailable. Check its availability and try again.": {
+    "es": "El Administrador de credenciales de Windows no está disponible. Verifícalo y vuelve a intentarlo.",
+    "pt_BR": "O Gerenciador de Credenciais do Windows está indisponível. Verifique e tente novamente."
+  },
+  "Environment": {
+    "es": "Variable de entorno",
+    "pt_BR": "Variável de ambiente"
+  },
+  "Windows Credential Manager": {
+    "es": "Administrador de credenciales de Windows",
+    "pt_BR": "Gerenciador de Credenciais do Windows"
+  },
+  "Legacy JSON": {
+    "es": "JSON heredado",
+    "pt_BR": "JSON legado"
+  },
+  "No changes": {
+    "es": "Sin cambios",
+    "pt_BR": "Sem alterações"
+  },
+  "Enter a new key to save.": {
+    "es": "Ingresa una clave nueva para guardarla.",
+    "pt_BR": "Insira uma nova chave para salvá-la."
+  },
+  "Save failed": {
+    "es": "Error al guardar",
+    "pt_BR": "Falha ao salvar"
+  },
+  "Saved": {
+    "es": "Guardada",
+    "pt_BR": "Salva"
+  },
+  "Saved to Windows Credential Manager. The environment variable still takes priority.": {
+    "es": "Guardada en el Administrador de credenciales de Windows. La variable de entorno sigue teniendo prioridad.",
+    "pt_BR": "Salva no Gerenciador de Credenciais do Windows. A variável de ambiente continua tendo prioridade."
+  },
+  "Credential saved to Windows Credential Manager.": {
+    "es": "Credencial guardada en el Administrador de credenciales de Windows.",
+    "pt_BR": "Credencial salva no Gerenciador de Credenciais do Windows."
+  },
+  "Store unavailable": {
+    "es": "Almacén no disponible",
+    "pt_BR": "Armazenamento indisponível"
+  },
+  "Cannot verify Windows Credential Manager.": {
+    "es": "No se pudo verificar el Administrador de credenciales de Windows.",
+    "pt_BR": "Não foi possível verificar o Gerenciador de Credenciais do Windows."
+  },
+  "Remove the saved Windows Credential Manager credential?": {
+    "es": "¿Eliminar la credencial del Administrador de credenciales de Windows?",
+    "pt_BR": "Remover a credencial do Gerenciador de Credenciais do Windows?"
+  },
+  "Warning: an existing legacy JSON credential may become active after removal. JSON files will not be changed.": {
+    "es": "Una credencial JSON heredada podría activarse tras la eliminación. Los archivos JSON se conservan.",
+    "pt_BR": "Uma credencial JSON legada pode se tornar ativa após a remoção. Os arquivos JSON são preservados."
+  },
+  "Environment variables and legacy JSON files will not be changed.": {
+    "es": "Se conservarán las variables de entorno y los archivos JSON heredados.",
+    "pt_BR": "As variáveis de ambiente e os arquivos JSON legados serão preservados."
+  },
+  "Confirm removal": {
+    "es": "Confirmar eliminación",
+    "pt_BR": "Confirmar remoção"
+  },
+  "Removal failed": {
+    "es": "Error al eliminar",
+    "pt_BR": "Falha ao remover"
+  },
+  "Removal": {
+    "es": "Eliminación",
+    "pt_BR": "Remoção"
+  },
+  "Credential removed.": {
+    "es": "Credencial eliminada.",
+    "pt_BR": "Credencial removida."
+  },
+  "No stored credential was found.": {
+    "es": "No se encontró una credencial guardada.",
+    "pt_BR": "Nenhuma credencial salva foi encontrada."
+  },
+  "Cannot access secure credential store": {
+    "es": "No se pudo acceder al almacén seguro de credenciales",
+    "pt_BR": "Não foi possível acessar o armazenamento seguro de credenciais"
+  },
+  "No credential available": {
+    "es": "No hay credenciales disponibles",
+    "pt_BR": "Nenhuma credencial disponível"
+  },
+  "Testing connection...": {
+    "es": "Probando la conexión…",
+    "pt_BR": "Testando a conexão…"
+  },
+  "Authentication rejected": {
+    "es": "Autenticación rechazada",
+    "pt_BR": "Autenticação rejeitada"
+  },
+  "Connection successful (sample lookup)": {
+    "es": "Conexión correcta (consulta de ejemplo)",
+    "pt_BR": "Conexão bem-sucedida (consulta de exemplo)"
+  },
+  "Authentication or permission rejected": {
+    "es": "Autenticación o permiso rechazado",
+    "pt_BR": "Autenticação ou permissão rejeitada"
+  },
+  "Connection unavailable (network or service error)": {
+    "es": "Conexión no disponible (error de red o servicio)",
+    "pt_BR": "Conexão indisponível (erro de rede ou serviço)"
+  },
+  "Connection test running": {
+    "es": "Prueba de conexión en curso",
+    "pt_BR": "Teste de conexão em andamento"
+  },
+  "Wait for the connection test to finish before closing Settings.": {
+    "es": "Espera a que termine la prueba antes de cerrar Configuración.",
+    "pt_BR": "Aguarde o término do teste antes de fechar as Configurações."
+  },
+  "Cannot save to Windows Credential Manager": {
+    "es": "No se pudo guardar en el Administrador de credenciales de Windows",
+    "pt_BR": "Não foi possível salvar no Gerenciador de Credenciais do Windows"
+  },
+  "Cannot delete from Windows Credential Manager": {
+    "es": "No se pudo eliminar del Administrador de credenciales de Windows",
+    "pt_BR": "Não foi possível remover do Gerenciador de Credenciais do Windows"
+  },
+  "Windows Credential Manager backend is not active": {
+    "es": "El Administrador de credenciales de Windows no está activo",
+    "pt_BR": "O Gerenciador de Credenciais do Windows está inativo"
+  },
+  "Windows Credential Manager is unavailable": {
+    "es": "El Administrador de credenciales de Windows no está disponible",
+    "pt_BR": "O Gerenciador de Credenciais do Windows está indisponível"
+  },
+  "Yes": {
+    "es": "Sí",
+    "pt_BR": "Sim"
+  },
+  "No": {
+    "es": "No",
+    "pt_BR": "Não"
+  },
+  "Total": {
+    "es": "Total",
+    "pt_BR": "Total"
+  },
+  "{count} of 3 sources evaluated the indicator": {
+    "es": "{count} de 3 fuentes evaluaron el indicador",
+    "pt_BR": "{count} de 3 fontes avaliaram o indicador"
+  },
+  "Insufficient data": {
+    "es": "Datos insuficientes",
+    "pt_BR": "Dados insuficientes"
+  },
+  "Partial coverage · No matches in evaluated sources": {
+    "es": "Cobertura parcial · Sin coincidencias en las fuentes consultadas",
+    "pt_BR": "Cobertura parcial · Sem correspondências nas fontes consultadas"
+  },
+  "Unsupported hash type": {
+    "es": "Tipo de hash no admitido",
+    "pt_BR": "Tipo de hash incompatível"
+  },
+  "IP information": {
+    "es": "Información de IP",
+    "pt_BR": "Informações de IP"
+  }
+}

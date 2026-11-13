@@ -57,11 +57,11 @@ Never commit either real file. They are explicitly excluded by `.gitignore`.
 
 ## Troubleshooting
 
-If `iocinfo` is not found or the environment becomes damaged, delete `.venv` and run `setup.ps1` again.
+If the development environment becomes damaged, recreate the virtual environment with setup.ps1. The portable Windows build includes iocinfo and its Python runtime.
 
 If API cards show `Not configured`, verify Settings, environment variables, or the corresponding JSON file and key.
 
-Do not disable TLS certificate validation. The project uses `certifi` to maintain certificate verification.
+Do not disable TLS certificate validation. The authenticated CTI clients use `certifi` when available. Embedded iocinfo lookups use Python's default HTTPS certificate verification.
 
 
 ## Self-test
@@ -74,7 +74,7 @@ After setup, core IOC normalization tests can be run with:
 
 Runtime diagnostics are written to `logs\cti-workbench.log`.
 
-## Settings (v0.6.0 development)
+## Settings
 
 Open the gear button in the application's header. Enter a new API key and select
 **Save** to store it in Windows Credential Manager. **Test Connection** checks

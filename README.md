@@ -4,12 +4,19 @@
 
 CTI Workbench is a Windows desktop application for enriching indicators of compromise (IOCs) and presenting source-specific evidence in an analyst-oriented interface. The stable `v0.5.8` release introduced a consolidated investigation overview and improved Intelligence Graph readability while retaining the existing evidence-first workflow.
 
-The `v0.6.1-dev` development version adds secure credential management, defensive CTI source response validation, and improved diagnostic logging privacy.
+Version `0.7` packages CTI Workbench as a single portable Windows executable with embedded iocinfo, three interface languages, and evidence coverage in the assessment.
+
+## Portable Windows build
+
+Download the **CTI-Workbench-dev-win-x64** artifact from GitHub Actions and extract **CTI-Workbench.exe**. The executable includes Python, Qt and [iocinfo](https://github.com/homestarfuzzer/iocinfo) (MIT). It runs without an installer, an installed Python environment or a helper executable.
+
+Online enrichment requires internet access. API keys saved in Windows Credential Manager and the language preference are specific to the Windows user. Optional legacy JSON credentials are read from the config directory next to the executable.
 
 ## Current capabilities
 
 - IOC analysis: IPv4, IPv6, IP:port, domain, URL, MD5, SHA-1 and SHA-256.
-- DNS / WHOIS enrichment through `iocinfo`.
+- Built-in DNS / WHOIS and IP enrichment through iocinfo.
+- Interface in English, Spanish and Brazilian Portuguese. Choose a language in Settings and restart to apply it.
 - VirusTotal API v3 existing-report enrichment and source-native vendor detection statistics.
 - ThreatFox and URLhaus API enrichment.
 - Automatic Related Indicators discovery when VirusTotal exposes relationship data.
@@ -60,7 +67,7 @@ The repository includes configuration templates only:
 
 `setup.ps1` creates local working copies. Real credential files are excluded by `.gitignore` and **must never be committed**.
 
-### Credential management in v0.6.1-dev
+### Credential management
 
 The Settings dialog allows users to manage VirusTotal and abuse.ch credentials through Windows Credential Manager using `keyring`.
 
@@ -145,7 +152,8 @@ cti-workbench/
 
 ## Version history
 
-- **v0.6.1-dev:** Secure credential management through Windows Credential Manager; Settings dialog; defensive ThreatFox and URLhaus response validation; improved IOCinfo logging privacy; 38 automated tests passed.
+- **v0.7:** Portable Windows executable, embedded iocinfo, English, Spanish and Brazilian Portuguese, and source coverage in the assessment.
+- **v0.6.1-dev (development):** Secure credential management through Windows Credential Manager; Settings dialog; defensive ThreatFox and URLhaus response validation; improved IOCinfo logging privacy; 38 automated tests passed.
 - **v0.5.8:** Consolidated investigation overview; VirusTotal gauge and vendor statistics; refined Intelligence Graph layouts and labeling; runtime correction identified during preview testing.
 - **v0.5.7:** Analyst UX refinements, Windows maximized startup, improved graph glyph sizing and relationship presentation.
 - **v0.5.6:** Strict IP/IP:port validation, separation of core IOC/TLS/logging helpers from the UI, defensive VirusTotal relationship handling, rotating diagnostics, `iocinfo` timeout reporting and normalization regression tests.
@@ -153,12 +161,8 @@ cti-workbench/
 
 ## Repository status
 
-- **Stable release:** `v0.5.8`.
-- **Development version:** `v0.6.1-dev`.
-- **Development branch:** `develop`.
-- **Latest development commit:** `82da727` — Release v0.6.1-dev: secure credentials and CTI source validation.
-
-The `v0.6.1-dev` development version does not replace the stable `v0.5.8` release. The stable release branch remains separate from ongoing development.
+- **Version on `develop`:** `v0.7`.
+- **Previous stable baseline:** `v0.5.8`.
 
 This repository is intended to remain private unless its owner explicitly decides otherwise. No open-source license is granted by this repository.
 
@@ -219,7 +223,7 @@ Do not modify historical release tags or rewrite published Git history.
 
 CTI Workbench is a personal technical development project focused on evidence-based IOC enrichment and practical SOC/CTI investigation workflows.
 
-The stable baseline remains `v0.5.8`. Development continues on `develop`, where `v0.6.1-dev` introduces credential-management improvements and stronger handling of external intelligence responses.
+Version 0.7 brings the changes developed during the 0.6 cycle together.
 
 No claim is made that the application is signed, packaged as a production-ready executable, or deployed as a production service.
 
